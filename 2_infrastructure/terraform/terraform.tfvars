@@ -24,7 +24,7 @@ rds_master_username  = "hrs_admin"
 # Never commit this value to git.
 
 # ── Domain ────────────────────────────────────────────────────────────────────
-domain_name = "platform.hrstravel.com"
+domain_name = "platform.talkit.chat"
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 s3_shard_count = 15

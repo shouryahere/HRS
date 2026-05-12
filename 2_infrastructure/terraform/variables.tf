@@ -22,9 +22,11 @@ variable "environment" {
 
 variable "domain_name" {
   type    = string
-  default = "platform.hrstravel.com"
+  default = "platform.talkit.chat"
   # Public domain required — Let's Encrypt does not issue certs for .internal TLDs.
   # cert-manager uses DNS-01 challenge via Route53.
+  # Setup: create Route53 hosted zone for this subdomain, then add NS records
+  # at GoDaddy (parent zone talkit.chat) pointing the `platform` subdomain at Route53.
 }
 
 # EKS API endpoint access.

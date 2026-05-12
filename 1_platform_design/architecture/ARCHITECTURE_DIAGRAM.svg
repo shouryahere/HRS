@@ -112,7 +112,7 @@
   <rect x="547" y="218" width="115" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
   <text x="604" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">cert-manager</text>
   <text x="604" y="247" text-anchor="middle" font-size="8" fill="#555">ClusterIssuer</text>
-  <text x="604" y="260" text-anchor="middle" font-size="8" fill="#555">*.platform.hrstravel.com</text>
+  <text x="604" y="260" text-anchor="middle" font-size="8" fill="#555">*.platform.talkit.chat</text>
   <text x="604" y="273" text-anchor="middle" font-size="8" fill="#555">Let's Encrypt DNS-01</text>
   <text x="604" y="286" text-anchor="middle" font-size="8" fill="#555">via Route53 (IRSA)</text>
   <text x="604" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">TLS lifecycle</text>

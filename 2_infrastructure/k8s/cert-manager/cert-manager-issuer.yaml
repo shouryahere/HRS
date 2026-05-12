@@ -1,5 +1,5 @@
 # cert-manager ClusterIssuer — Let's Encrypt production via DNS-01 (Route53).
-# DNS-01 is required because the EKS API endpoint is private (no HTTP-01).
+# DNS-01 is required because the EKS API endpoint can be private (no HTTP-01).
 # IRSA on the cert-manager ServiceAccount grants Route53 access without stored creds.
 #
 # TLS two-layer:
@@ -13,7 +13,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: platform-ops@hrstravel.com
+    email: admin@talkit.chat
     privateKeySecretRef:
       name: letsencrypt-prod-account-key
     solvers:
@@ -30,7 +30,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: platform-ops@hrstravel.com
+    email: admin@talkit.chat
     privateKeySecretRef:
       name: letsencrypt-staging-account-key
     solvers:

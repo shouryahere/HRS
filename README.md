@@ -138,7 +138,7 @@ kubectl apply -f 3_observability/fluent-bit/fluent-bit.yaml
 | Secrets | ESO + Secrets Manager | Values never touch etcd; IRSA-scoped per team |
 | DB | RDS + Proxy + RLS | Connection pooling (1000 clients); row-level isolation engine-enforced |
 | Autoscaling | Karpenter v1.0 | NodePool + EC2NodeClass; Spot + on-demand; 30s consolidation |
-| TLS | ACM (ALB) + Let's Encrypt (in-cluster) | DNS-01 via Route53 IRSA; wildcard `*.platform.hrstravel.com` |
+| TLS | ACM (ALB) + Let's Encrypt (in-cluster) | DNS-01 via Route53 IRSA; wildcard `*.platform.talkit.chat` |
 | CI auth | GitHub Actions OIDC | `AssumeRoleWithWebIdentity` — zero stored AWS credentials |
 
 ### Cost

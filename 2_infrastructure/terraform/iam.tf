@@ -98,8 +98,8 @@ resource "aws_iam_policy" "cert_manager" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = ["route53:GetChange"]
+        Effect   = "Allow"
+        Action   = ["route53:GetChange"]
         Resource = "arn:aws:route53:::change/*"
       },
       {
@@ -108,7 +108,8 @@ resource "aws_iam_policy" "cert_manager" {
           "route53:ChangeResourceRecordSets",
           "route53:ListResourceRecordSets"
         ]
-        Resource = "arn:aws:route53:::hostedzone/*"
+        # Scoped to the platform's hosted zone only.
+        Resource = aws_route53_zone.platform.arn
       },
       {
         Effect   = "Allow"

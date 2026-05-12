@@ -163,7 +163,7 @@ roleRef:
   name: tenant-developer
 subjects:
 - kind: Group
-  name: "team-01-developers@hrstravel.com"
+  name: "team-01-developers@talkit.chat"
 ```
 
 ArgoCD AppProjects enforce that Tenant-A's ArgoCD application can only deploy to Tenant-A's namespace — CD-layer isolation in addition to K8s RBAC.
@@ -300,8 +300,8 @@ spec:
 **cert-manager IRSA:** cert-manager ServiceAccount has an IRSA role granting `route53:ChangeResourceRecordSets`, `route53:ListHostedZones`, and `route53:ListResourceRecordSets` to complete DNS-01 ACME challenges for Let's Encrypt certificate issuance.
 
 **TLS architecture (two layers):**
-- **ALB TLS:** ACM certificate (`*.platform.hrstravel.com`) attached to the ALB listener in Terraform. Free, AWS-managed, auto-renewed. cert-manager is not involved.
-- **In-cluster TLS:** cert-manager with `ClusterIssuer` backed by Let's Encrypt DNS-01 via Route53. Wildcard cert `*.platform.hrstravel.com`. Public domain required — Let's Encrypt does not issue certs for `.internal` TLDs.
+- **ALB TLS:** ACM certificate (`*.platform.talkit.chat`) attached to the ALB listener in Terraform. Free, AWS-managed, auto-renewed. cert-manager is not involved.
+- **In-cluster TLS:** cert-manager with `ClusterIssuer` backed by Let's Encrypt DNS-01 via Route53. Wildcard cert `*.platform.talkit.chat`. Public domain required — Let's Encrypt does not issue certs for `.internal` TLDs.
 
 ---
 

@@ -29,7 +29,7 @@ flowchart TB
                         ArgoCD["ArgoCD\nApplicationSets\nAppProjects per tenant"]
                         ImgUpd["ArgoCD\nImage Updater\npoll ECR → commit tag"]
                         Kyverno["Kyverno\nClusterPolicies\nresource limits · ECR-only · no NodePort"]
-                        CertMgr["cert-manager\n*.platform.hrstravel.com\nLet's Encrypt DNS-01 via Route53\nIRSA for Route53 access"]
+                        CertMgr["cert-manager\n*.platform.talkit.chat\nLet's Encrypt DNS-01 via Route53\nIRSA for Route53 access"]
                         ESO["External Secrets\nOperator\nfetch from Secrets Manager"]
                         OTel["OTel Collector\nDaemonSet\nmetrics + traces\nnamespace → tenant_id"]
                         FB["Fluent Bit\nDaemonSet\npod logs → CloudWatch\ntenant_id tagged"]

@@ -48,22 +48,45 @@ This creates the S3 state bucket and DynamoDB lock table. Terraform cannot manag
 
 ## Deploy
 
+This is a **two-stage apply** because ACM cert validation needs DNS to be delegated
+from GoDaddy to Route53 first.
+
+### Stage 1 — Create the Route53 hosted zone
+
 ```bash
 cd 2_infrastructure/terraform
-
-# Initialise with remote backend
 terraform init
 
-# Plan (inject secrets via env vars — never commit them)
+# Create just the hosted zone so we can get the NS records.
 TF_VAR_rds_master_password=<password> \
-TF_VAR_newrelic_license_key=<key> \
-terraform plan -out=tfplan
+terraform apply -target=aws_route53_zone.platform
 
-# Apply
+# Read the NS records — copy these into GoDaddy.
+terraform output route53_nameservers
+```
+
+### Stage 2 — Delegate the subdomain in GoDaddy
+
+1. Log into GoDaddy → DNS for `talkit.chat`
+2. Add four NS records for the host `platform`, one per nameserver from the output above:
+   ```
+   Type: NS    Name: platform    Value: ns-xxx.awsdns-xx.com    TTL: 1 hour
+   Type: NS    Name: platform    Value: ns-yyy.awsdns-yy.org    TTL: 1 hour
+   Type: NS    Name: platform    Value: ns-zzz.awsdns-zz.net    TTL: 1 hour
+   Type: NS    Name: platform    Value: ns-www.awsdns-ww.co.uk  TTL: 1 hour
+   ```
+3. Wait ~5 minutes and verify: `dig NS platform.talkit.chat +short` should return the AWS nameservers.
+
+### Stage 3 — Full apply
+
+```bash
 TF_VAR_rds_master_password=<password> \
 TF_VAR_newrelic_license_key=<key> \
-terraform apply tfplan
+terraform apply
 ```
+
+ACM validation will complete in 2-5 minutes once it sees the delegated DNS records.
+Everything else (EKS, Helm releases, RDS, ECR, …) is created in this stage.
 
 ## Apply Kubernetes manifests
 

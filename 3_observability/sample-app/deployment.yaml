@@ -103,7 +103,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}  # From terraform output acm_certificate_arn
 spec:
   rules:
-    - host: team-01.platform.hrstravel.com
+    - host: team-01.platform.talkit.chat
       http:
         paths:
           - path: /

@@ -276,6 +276,17 @@ resource "helm_release" "aws_lb_controller" {
   depends_on = [helm_release.cilium]
 }
 
+# ── Route53 Hosted Zone ─────────────────────────────────────────────────────
+# Creates the hosted zone for the platform subdomain (e.g. platform.talkit.chat).
+# After apply, take the NS records from `terraform output route53_nameservers`
+# and add them at the registrar (GoDaddy) for the parent zone — this delegates
+# the subdomain to Route53.
+resource "aws_route53_zone" "platform" {
+  name    = var.domain_name
+  comment = "Delegated subdomain for ${var.cluster_name} — managed by Terraform"
+  tags    = { Name = "${var.cluster_name}-zone" }
+}
+
 # ── ACM Certificate for ALB ─────────────────────────────────────────────────
 # Issues a wildcard TLS certificate validated via DNS in Route53.
 # Attached by the AWS Load Balancer Controller to the ALB listener.
@@ -292,9 +303,29 @@ resource "aws_acm_certificate" "platform" {
   tags = { Name = "${var.cluster_name}-platform-cert" }
 }
 
-# Note: DNS validation records must be created in Route53. If the hosted zone
-# is in this account, add `aws_route53_record` + `aws_acm_certificate_validation`.
-# Left out here because hosted-zone ownership is environment-specific.
+# DNS validation records — written into the Route53 zone above.
+resource "aws_route53_record" "acm_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.platform.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = aws_route53_zone.platform.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "platform" {
+  certificate_arn         = aws_acm_certificate.platform.arn
+  validation_record_fqdns = [for r in aws_route53_record.acm_validation : r.fqdn]
+}
 
 # ── External Secrets Operator ─────────────────────────────────────────────────
 resource "kubernetes_namespace" "external_secrets" {

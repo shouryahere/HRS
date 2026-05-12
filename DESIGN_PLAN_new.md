@@ -202,9 +202,9 @@ This document serves as the master plan linking all deliverables.
 - **Audit Logging:** CloudTrail + EKS audit logs track all API access
 - **Network Segmentation:** Private subnets + security groups + NACLs + NAT Gateway per AZ (3 gateways for AZ resilience, no single point of failure)
 - **TLS (two-layer approach):**
-  - **ALB TLS:** ACM certificate (`*.platform.hrstravel.com`) attached directly to the ALB listener in Terraform — free, AWS-managed, auto-renewed. cert-manager is not involved here.
-  - **In-cluster TLS:** cert-manager with a `ClusterIssuer` backed by Let's Encrypt DNS-01 via Route53. Provisions wildcard cert `*.platform.hrstravel.com` for per-tenant ingress TLS. Renewed automatically 30 days before expiry.
-  - **Why not `.internal`:** Let's Encrypt (and all public CAs) do not issue certificates for `.internal` TLDs — DNS-01 validation requires a publicly resolvable domain. Domain used is `platform.hrstravel.com` (or equivalent public zone delegated to Route53).
+  - **ALB TLS:** ACM certificate (`*.platform.talkit.chat`) attached directly to the ALB listener in Terraform — free, AWS-managed, auto-renewed. cert-manager is not involved here.
+  - **In-cluster TLS:** cert-manager with a `ClusterIssuer` backed by Let's Encrypt DNS-01 via Route53. Provisions wildcard cert `*.platform.talkit.chat` for per-tenant ingress TLS. Renewed automatically 30 days before expiry.
+  - **Why not `.internal`:** Let's Encrypt (and all public CAs) do not issue certificates for `.internal` TLDs — DNS-01 validation requires a publicly resolvable domain. Domain used is `platform.talkit.chat` (or equivalent public zone delegated to Route53).
   - **cert-manager IRSA:** cert-manager needs `route53:ChangeResourceRecordSets` and `route53:ListHostedZones` permissions via IRSA to complete DNS-01 challenges.
 - **EKS Private API Endpoint:** `endpoint_private_access = true`, `endpoint_public_access = false`. The Kubernetes API server is accessible only from within the VPC (bastion or VPN required for operator access). This eliminates the public-internet attack surface on the cluster control plane.
 - **VPC Flow Logs:** Enabled on all VPC ENIs, sent to CloudWatch Logs. Captures network-layer traffic for forensics and compliance audits that Cilium Hubble alone cannot replicate (Hubble operates at the pod level, not the VPC level).
@@ -455,7 +455,7 @@ As teams grow, **per-team cost decreases** (infrastructure costs are mostly fixe
 │   ├── argocd-image-updater.yaml    # Image Updater: polls ECR (IRSA) → commits new tag → ArgoCD syncs
 │   ├── kyverno-policies.yaml        # ClusterPolicies (Audit mode first, then Enforce after validation)
 │   ├── cert-manager-issuer.yaml     # ClusterIssuer: Let's Encrypt DNS-01 via Route53 (IRSA for Route53)
-│   ├── cert-manager-certificate.yaml# Wildcard cert (*.platform.hrstravel.com)
+│   ├── cert-manager-certificate.yaml# Wildcard cert (*.platform.talkit.chat)
 │   └── external-secrets/
 │       ├── clustersecretstore.yaml  # ESO ClusterSecretStore → AWS Secrets Manager
 │       └── externalsecret.yaml      # Per-tenant ExternalSecret template

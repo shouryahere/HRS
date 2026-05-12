@@ -95,8 +95,18 @@ output "aws_region" {
 }
 
 output "acm_certificate_arn" {
-  value       = aws_acm_certificate.platform.arn
-  description = "ACM certificate ARN for the wildcard *.platform.hrstravel.com — annotate on tenant Ingress objects"
+  value       = aws_acm_certificate_validation.platform.certificate_arn
+  description = "ACM certificate ARN (post-validation) for the wildcard *.platform.talkit.chat — annotate on tenant Ingress objects"
+}
+
+output "route53_zone_id" {
+  value       = aws_route53_zone.platform.zone_id
+  description = "Route53 hosted zone ID for the platform subdomain"
+}
+
+output "route53_nameservers" {
+  value       = aws_route53_zone.platform.name_servers
+  description = "Nameservers — copy these into GoDaddy as NS records for the 'platform' subdomain of talkit.chat to delegate DNS to Route53"
 }
 
 output "aws_lb_controller_role_arn" {
