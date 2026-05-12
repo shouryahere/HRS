@@ -1,0 +1,62 @@
+{
+  "name": "Per-Tenant Dashboard (team-01)",
+  "description": "Service health, latency, error rate, and DB metrics scoped to a single team. Duplicate and change tenant_id filter for each team.",
+  "permissions": "PUBLIC_READ_ONLY",
+  "pages": [
+    {
+      "name": "Service Health",
+      "widgets": [
+        {
+          "title": "Request Rate (req/min)",
+          "visualization": "viz.line",
+          "nrql": "SELECT rate(count(*), 1 minute) AS 'req/min' FROM Span WHERE tenant_id = 'team-01' AND span.kind = 'server' TIMESERIES AUTO"
+        },
+        {
+          "title": "Error Rate (%)",
+          "visualization": "viz.line",
+          "nrql": "SELECT percentage(count(*), WHERE http.status_code >= 500) AS 'Error %' FROM Span WHERE tenant_id = 'team-01' AND span.kind = 'server' TIMESERIES AUTO"
+        },
+        {
+          "title": "P50 / P95 / P99 Latency (ms)",
+          "visualization": "viz.line",
+          "nrql": "SELECT percentile(duration.ms, 50, 95, 99) FROM Span WHERE tenant_id = 'team-01' AND span.kind = 'server' TIMESERIES AUTO"
+        },
+        {
+          "title": "Active Pods",
+          "visualization": "viz.billboard",
+          "nrql": "SELECT uniqueCount(k8s.pod.name) AS 'Running Pods' FROM Metric WHERE cluster = 'hrs-platform' AND k8s.namespace.name = 'team-01' AND k8s.pod.status = 'Running' SINCE 5 minutes ago"
+        },
+        {
+          "title": "Container CPU Usage",
+          "visualization": "viz.area",
+          "nrql": "SELECT average(k8s.container.cpuUsedCores) AS 'CPU Cores' FROM Metric WHERE cluster = 'hrs-platform' AND k8s.namespace.name = 'team-01' FACET k8s.container.name TIMESERIES AUTO"
+        },
+        {
+          "title": "Container Memory Usage (MiB)",
+          "visualization": "viz.area",
+          "nrql": "SELECT average(k8s.container.memoryUsedBytes) / 1048576 AS 'MiB' FROM Metric WHERE cluster = 'hrs-platform' AND k8s.namespace.name = 'team-01' FACET k8s.container.name TIMESERIES AUTO"
+        }
+      ]
+    },
+    {
+      "name": "Database",
+      "widgets": [
+        {
+          "title": "DB Query Duration P99 (ms)",
+          "visualization": "viz.line",
+          "nrql": "SELECT percentile(duration.ms, 99) AS 'P99 ms' FROM Span WHERE tenant_id = 'team-01' AND db.system = 'postgresql' TIMESERIES AUTO"
+        },
+        {
+          "title": "DB Error Count",
+          "visualization": "viz.line",
+          "nrql": "SELECT count(*) AS 'DB Errors' FROM Span WHERE tenant_id = 'team-01' AND db.system = 'postgresql' AND otel.status_code = 'ERROR' TIMESERIES AUTO"
+        },
+        {
+          "title": "Slowest DB Queries",
+          "visualization": "viz.table",
+          "nrql": "SELECT average(duration.ms) AS 'Avg ms', max(duration.ms) AS 'Max ms', count(*) AS 'Count', db.statement FROM Span WHERE tenant_id = 'team-01' AND db.system = 'postgresql' FACET db.statement SINCE 1 hour ago ORDER BY 'Avg ms' DESC LIMIT 10"
+        }
+      ]
+    }
+  ]
+}

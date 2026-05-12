@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write       # git tag commit write-back for Image Updater
+  id-token: write       # OIDC token for AssumeRoleWithWebIdentity (no stored AWS keys)
+  security-events: write # SARIF upload for Trivy results
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+  # TEAM is set per-job from the path that changed (matrix strategy for monorepo)
+
+jobs:
+  # ── Detect changed apps ─────────────────────────────────────────────────────
+  detect-changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    outputs:
+      teams: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed team directories
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            team-01:
+              - 'apps/team-01/**'
+            team-02:
+              - 'apps/team-02/**'
+            team-03:
+              - 'apps/team-03/**'
+
+  # ── Build, scan, push ───────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push (${{ matrix.team }})
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.teams != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        team: ${{ fromJSON(needs.detect-changes.outputs.teams) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "IMAGE_TAG=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_URI=${{ env.ECR_REGISTRY }}/hrs-platform/${{ matrix.team }}/app:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag "${{ steps.tag.outputs.IMAGE_URI }}" \
+            --label "git.commit=${{ github.sha }}" \
+            --label "git.branch=${{ github.ref_name }}" \
+            --cache-from "${{ env.ECR_REGISTRY }}/hrs-platform/${{ matrix.team }}/app:latest" \
+            "apps/${{ matrix.team }}"
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: "${{ steps.tag.outputs.IMAGE_URI }}"
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          # Fail the pipeline on CRITICAL vulnerabilities
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()  # Upload even if scan found issues, so they appear in Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Push image to ECR
+        # Only push on merge to main — PRs only scan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "${{ steps.tag.outputs.IMAGE_URI }}"
+          # Also tag :latest for cache warm-up
+          docker tag "${{ steps.tag.outputs.IMAGE_URI }}" \
+            "${{ env.ECR_REGISTRY }}/hrs-platform/${{ matrix.team }}/app:latest"
+          docker push "${{ env.ECR_REGISTRY }}/hrs-platform/${{ matrix.team }}/app:latest"
+
+      - name: Update GitOps tag (write-back for ArgoCD Image Updater)
+        # ArgoCD Image Updater can also do this autonomously via IRSA ECR polling,
+        # but an explicit commit here provides a deterministic audit trail in git.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name  "ci-bot"
+          git config user.email "ci-bot@hrs-platform"
+
+          TAG="${{ steps.tag.outputs.IMAGE_TAG }}"
+          TEAM="${{ matrix.team }}"
+          VALUES_FILE="apps/${TEAM}/values.yaml"
+
+          # Update the image tag field in the team's values file
+          sed -i "s|^  tag:.*|  tag: \"${TAG}\"|" "${VALUES_FILE}"
+
+          git add "${VALUES_FILE}"
+          git commit -m "build: update ${TEAM} image tag to ${TAG} [skip ci]" || echo "No changes to commit"
+          git push
+
+  # ── Terraform validate (PR only) ────────────────────────────────────────────
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: 2_infrastructure/terraform
+
+      - name: Terraform Init (local backend for validation)
+        run: terraform init -backend=false
+        working-directory: 2_infrastructure/terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: 2_infrastructure/terraform
+
+  # ── Kubernetes manifest lint ─────────────────────────────────────────────────
+  k8s-lint:
+    name: Kubernetes Manifest Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Kubeconform
+        uses: docker://ghcr.io/yannh/kubeconform:latest
+        with:
+          entrypoint: /kubeconform
+          args: >-
+            -strict
+            -ignore-missing-schemas
+            -kubernetes-version 1.32.0
+            -summary
+            2_infrastructure/k8s/

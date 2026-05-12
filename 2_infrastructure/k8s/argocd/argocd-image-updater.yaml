@@ -1,0 +1,80 @@
+# ArgoCD Image Updater — watches ECR for new image tags and commits the updated
+# tag back to Git, completing the GitOps loop without storing credentials.
+# IRSA annotation gives it ECR read access (aws_iam_role.argocd_image_updater in iam.tf).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-image-updater
+  namespace: argocd
+  annotations:
+    eks.amazonaws.com/role-arn: ""  # Populated by Terraform output: aws_iam_role.argocd_image_updater.arn
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-image-updater-config
+  namespace: argocd
+data:
+  # Log level: debug during initial rollout, then info
+  log.level: info
+
+  # ECR registry — Image Updater uses IRSA token (no stored credentials)
+  registries.conf: |
+    registries:
+      - name: ECR
+        api_url: https://{{ .Values.accountId }}.dkr.ecr.eu-central-1.amazonaws.com
+        prefix: "{{ .Values.accountId }}.dkr.ecr.eu-central-1.amazonaws.com"
+        credentials: ext:/scripts/ecr-login.sh
+        default: true
+        insecure: false
+
+  # Write-back method: git commit (maintains GitOps audit trail)
+  git.commit-message-template: |
+    build: auto-update image {{.AppName}} to {{.ImageAlias}}:{{.NewTag}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-image-updater
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-image-updater
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-image-updater
+    spec:
+      serviceAccountName: argocd-image-updater
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: argocd-image-updater
+          image: quay.io/argoprojlabs/argocd-image-updater:v0.14.0
+          args:
+            - run
+            - --argocd-server-addr=argocd-server.argocd.svc.cluster.local
+            - --argocd-insecure=false
+          env:
+            - name: ARGOCD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-image-updater-secret
+                  key: argocd.token
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

@@ -1,0 +1,62 @@
+{
+  "name": "Platform Overview",
+  "description": "Cluster-wide health: node utilisation, pod counts, error rates, SLO burn rate across all tenants",
+  "permissions": "PUBLIC_READ_ONLY",
+  "pages": [
+    {
+      "name": "Cluster Health",
+      "widgets": [
+        {
+          "title": "Node CPU Utilisation (%)",
+          "visualization": "viz.line",
+          "nrql": "SELECT average(k8s.node.cpuUsedCores / k8s.node.cpuAllocatableCores * 100) AS 'CPU %' FROM Metric WHERE cluster = 'hrs-platform' FACET nodeName TIMESERIES AUTO"
+        },
+        {
+          "title": "Node Memory Utilisation (%)",
+          "visualization": "viz.line",
+          "nrql": "SELECT average(k8s.node.memoryUsedBytes / k8s.node.memoryAllocatableBytes * 100) AS 'Memory %' FROM Metric WHERE cluster = 'hrs-platform' FACET nodeName TIMESERIES AUTO"
+        },
+        {
+          "title": "Running Pods by Team",
+          "visualization": "viz.bar",
+          "nrql": "SELECT uniqueCount(k8s.pod.name) AS 'Pods' FROM Metric WHERE cluster = 'hrs-platform' AND k8s.pod.status = 'Running' FACET tenant_id"
+        },
+        {
+          "title": "Pod Restart Count (last 1h)",
+          "visualization": "viz.table",
+          "nrql": "SELECT sum(k8s.pod.restartCount) AS 'Restarts' FROM Metric WHERE cluster = 'hrs-platform' FACET k8s.namespace.name, k8s.pod.name SINCE 1 hour ago ORDER BY Restarts DESC LIMIT 20"
+        },
+        {
+          "title": "HTTP Error Rate (5xx) by Team",
+          "visualization": "viz.line",
+          "nrql": "SELECT rate(count(*), 1 minute) AS 'Errors/min' FROM Span WHERE cluster = 'hrs-platform' AND http.status_code >= 500 FACET tenant_id TIMESERIES AUTO"
+        },
+        {
+          "title": "P99 Latency by Team (ms)",
+          "visualization": "viz.line",
+          "nrql": "SELECT percentile(duration.ms, 99) AS 'P99 ms' FROM Span WHERE cluster = 'hrs-platform' AND span.kind = 'server' FACET tenant_id TIMESERIES AUTO"
+        }
+      ]
+    },
+    {
+      "name": "SLO Burn Rate",
+      "widgets": [
+        {
+          "title": "Availability SLO — 99.9% (30-day window)",
+          "visualization": "viz.billboard",
+          "nrql": "SELECT (1 - filter(count(*), WHERE http.status_code >= 500) / count(*)) * 100 AS 'Availability %' FROM Span WHERE cluster = 'hrs-platform' AND span.kind = 'server' SINCE 30 days ago"
+        },
+        {
+          "title": "Error Budget Remaining",
+          "visualization": "viz.bullet",
+          "nrql": "SELECT (0.001 - (filter(count(*), WHERE http.status_code >= 500) / count(*))) / 0.001 * 100 AS 'Budget Remaining %' FROM Span WHERE cluster = 'hrs-platform' AND span.kind = 'server' SINCE 30 days ago"
+        },
+        {
+          "title": "Burn Rate (1h vs 6h vs 24h)",
+          "visualization": "viz.table",
+          "nrql": "SELECT rate(filter(count(*), WHERE http.status_code >= 500), 1 hour) AS '1h error rate', rate(filter(count(*), WHERE http.status_code >= 500), 6 hours) AS '6h error rate' FROM Span WHERE cluster = 'hrs-platform' FACET tenant_id SINCE 24 hours ago"
+        }
+      ]
+    }
+  ]
+}

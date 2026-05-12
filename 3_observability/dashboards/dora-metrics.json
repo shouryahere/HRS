@@ -1,0 +1,37 @@
+{
+  "name": "DORA Metrics",
+  "description": "Four DORA metrics derived from CI/CD pipeline events: Deployment Frequency, Lead Time, Change Failure Rate, MTTR",
+  "permissions": "PUBLIC_READ_ONLY",
+  "pages": [
+    {
+      "name": "DORA",
+      "widgets": [
+        {
+          "title": "Deployment Frequency (deployments/day)",
+          "visualization": "viz.billboard",
+          "nrql": "SELECT rate(uniqueCount(git.commit), 1 day) AS 'Deploys/day' FROM Span WHERE service.name LIKE '%sample-app%' AND deployment = true SINCE 30 days ago"
+        },
+        {
+          "title": "Lead Time for Changes (minutes)",
+          "visualization": "viz.line",
+          "nrql": "SELECT average(lead_time_minutes) AS 'Lead Time (min)' FROM Span WHERE service.name LIKE '%ci%' TIMESERIES 1 day SINCE 30 days ago"
+        },
+        {
+          "title": "Change Failure Rate (%)",
+          "visualization": "viz.billboard",
+          "nrql": "SELECT percentage(count(*), WHERE rollback = true) AS 'Change Failure %' FROM Span WHERE deployment = true SINCE 30 days ago"
+        },
+        {
+          "title": "Mean Time to Recovery (MTTR — minutes)",
+          "visualization": "viz.line",
+          "nrql": "SELECT average(recovery_time_minutes) AS 'MTTR (min)' FROM Span WHERE incident = true TIMESERIES 1 day SINCE 30 days ago"
+        },
+        {
+          "title": "Deployments by Team (last 30 days)",
+          "visualization": "viz.bar",
+          "nrql": "SELECT count(*) AS 'Deployments' FROM Span WHERE cluster = 'hrs-platform' AND deployment = true FACET tenant_id SINCE 30 days ago"
+        }
+      ]
+    }
+  ]
+}

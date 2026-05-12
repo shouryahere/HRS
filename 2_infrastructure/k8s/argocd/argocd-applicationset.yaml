@@ -1,0 +1,51 @@
+# ArgoCD ApplicationSet — generates one Application per team from a single template.
+# Adding a new team only requires adding their entry to the teams list generator below.
+# selfHeal + prune ensure GitOps is the sole source of truth.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenant-apps
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - team: team-01
+            targetRevision: main
+          - team: team-02
+            targetRevision: main
+          - team: team-03
+            targetRevision: main
+
+  template:
+    metadata:
+      name: "{{team}}-app"
+      namespace: argocd
+    spec:
+      project: "{{team}}"
+
+      source:
+        repoURL: https://github.com/hrs-group/platform-app
+        targetRevision: "{{targetRevision}}"
+        path: "apps/{{team}}"
+
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{team}}"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=false  # Namespace already created by Terraform
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

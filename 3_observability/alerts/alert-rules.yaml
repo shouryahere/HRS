@@ -1,0 +1,122 @@
+# New Relic alert policies defined as YAML for GitOps.
+# Apply via the New Relic Terraform provider or NR CLI (nr1).
+#
+# Policies:
+#   1. SLO breach — error rate > 0.1% (99.9% availability SLO)
+#   2. High latency — P99 > 2s
+#   3. Pod crash loop — container restarts > 5 in 5m
+#   4. Node memory pressure — memory > 85%
+#   5. Certificate expiry — TLS cert expires in < 14 days
+---
+alerts:
+  - name: "SLO Breach — Error Rate > 0.1%"
+    type: NRQL
+    nrql: |
+      SELECT percentage(count(*), WHERE http.status_code >= 500)
+      FROM Span
+      WHERE cluster = 'hrs-platform' AND span.kind = 'server'
+    critical:
+      threshold: 0.1
+      thresholdDuration: 300     # 5 minutes
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 0.05
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    description: "Error rate exceeded 0.1% — SLO at risk. Check recent deployments and DB health."
+
+  - name: "High P99 Latency > 2s"
+    type: NRQL
+    nrql: |
+      SELECT percentile(duration.ms, 99)
+      FROM Span
+      WHERE cluster = 'hrs-platform' AND span.kind = 'server'
+      FACET tenant_id
+    critical:
+      threshold: 2000
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 1000
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    description: "P99 latency above 2s for a tenant. Check DB query times and pod resources."
+
+  - name: "Pod CrashLoopBackOff"
+    type: NRQL
+    nrql: |
+      SELECT sum(k8s.pod.restartCount)
+      FROM Metric
+      WHERE cluster = 'hrs-platform'
+      FACET k8s.namespace.name, k8s.pod.name
+    critical:
+      threshold: 5
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    description: "Pod restarted 5+ times in 5 minutes — likely CrashLoopBackOff."
+
+  - name: "Node Memory Pressure > 85%"
+    type: NRQL
+    nrql: |
+      SELECT average(k8s.node.memoryUsedBytes / k8s.node.memoryAllocatableBytes * 100)
+      FROM Metric
+      WHERE cluster = 'hrs-platform'
+      FACET nodeName
+    critical:
+      threshold: 85
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 75
+      thresholdDuration: 600
+      thresholdOccurrences: ALL
+    description: "Node memory > 85% — Karpenter should scale out. Verify Karpenter is running."
+
+  - name: "TLS Certificate Expiry < 14 days"
+    type: NRQL
+    nrql: |
+      SELECT min(ssl.days_until_expiry)
+      FROM Metric
+      WHERE cluster = 'hrs-platform'
+      FACET host
+    critical:
+      threshold: 7
+      thresholdDuration: 3600
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 14
+      thresholdDuration: 3600
+      thresholdOccurrences: ALL
+    description: "TLS certificate expiring soon — check cert-manager ClusterIssuer and Route53 permissions."
+
+  - name: "RDS CPU > 80%"
+    type: NRQL
+    nrql: |
+      SELECT average(aws.rds.CPUUtilization)
+      FROM Metric
+      WHERE aws.rds.dbInstanceIdentifier = 'hrs-platform-postgres'
+    critical:
+      threshold: 80
+      thresholdDuration: 600
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 60
+      thresholdDuration: 600
+      thresholdOccurrences: ALL
+    description: "RDS CPU high — consider scaling instance class or optimising queries."
+
+  - name: "RDS Connections Approaching Limit"
+    type: NRQL
+    nrql: |
+      SELECT average(aws.rds.DatabaseConnections)
+      FROM Metric
+      WHERE aws.rds.dbInstanceIdentifier = 'hrs-platform-postgres'
+    critical:
+      threshold: 900
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    warning:
+      threshold: 700
+      thresholdDuration: 300
+      thresholdOccurrences: ALL
+    description: "RDS connections near limit (max ~1000 for db.t3.medium). RDS Proxy should absorb spikes — check proxy health."

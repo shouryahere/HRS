@@ -1,0 +1,39 @@
+# cert-manager ClusterIssuer — Let's Encrypt production via DNS-01 (Route53).
+# DNS-01 is required because the EKS API endpoint is private (no HTTP-01).
+# IRSA on the cert-manager ServiceAccount grants Route53 access without stored creds.
+#
+# TLS two-layer:
+#   ALB → ACM certificate (provisioned in Terraform via aws_acm_certificate)
+#   In-cluster services → Let's Encrypt wildcard via this ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: platform-ops@hrstravel.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          route53:
+            region: eu-central-1
+            # cert-manager uses IRSA — no accessKeyID/secretAccessKey needed
+---
+# Staging issuer for testing cert issuance without hitting Let's Encrypt rate limits
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: platform-ops@hrstravel.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          route53:
+            region: eu-central-1

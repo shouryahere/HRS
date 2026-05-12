@@ -1,0 +1,167 @@
+# Kyverno ClusterPolicies — layer 5 of 5-layer isolation.
+# ALL policies start in Audit mode (validationFailureAction: Audit) to generate
+# policy reports without breaking existing workloads. After 24-48h of validation
+# with zero violations, flip to Enforce.
+#
+# Policies:
+#   1. require-resource-limits    — every container must set CPU+memory limits
+#   2. restrict-image-registries  — only ECR images allowed (no Docker Hub, GHCR, etc.)
+#   3. disallow-nodeport          — no NodePort services in tenant namespaces
+#   4. require-non-root           — containers must not run as root (UID 0)
+#   5. disallow-privilege-escalation — allowPrivilegeEscalation must be false
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/description: >
+      All containers in tenant namespaces must set CPU and memory limits to prevent
+      noisy-neighbour issues across teams.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-container-limits
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaceSelector:
+                matchExpressions:
+                  - key: pod-security.kubernetes.io/enforce
+                    operator: In
+                    values: ["restricted"]
+      validate:
+        message: "All containers must specify CPU and memory limits."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries to ECR
+    policies.kyverno.io/description: >
+      Tenant workloads may only pull images from the account's ECR registry.
+      This prevents supply-chain attacks via untrusted public registries.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-image-registry
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaceSelector:
+                matchExpressions:
+                  - key: pod-security.kubernetes.io/enforce
+                    operator: In
+                    values: ["restricted"]
+      validate:
+        message: "Images must be pulled from the account ECR registry (*.dkr.ecr.*.amazonaws.com/*)."
+        pattern:
+          spec:
+            containers:
+              - image: "*.dkr.ecr.*.amazonaws.com/*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-nodeport
+  annotations:
+    policies.kyverno.io/title: Disallow NodePort Services
+    policies.kyverno.io/description: >
+      NodePort services expose ports directly on host nodes, bypassing the ALB
+      and network policy layer. All traffic must flow through the ALB ingress.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-service-type
+      match:
+        any:
+          - resources:
+              kinds: ["Service"]
+              namespaceSelector:
+                matchExpressions:
+                  - key: pod-security.kubernetes.io/enforce
+                    operator: In
+                    values: ["restricted"]
+      validate:
+        message: "NodePort services are not allowed. Use ClusterIP with an Ingress resource."
+        pattern:
+          spec:
+            =(type): "!NodePort"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-non-root
+  annotations:
+    policies.kyverno.io/title: Require Non-Root Containers
+    policies.kyverno.io/description: >
+      Containers must not run as UID 0 (root). Use a non-root UID in the image
+      or set securityContext.runAsNonRoot=true.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-non-root
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaceSelector:
+                matchExpressions:
+                  - key: pod-security.kubernetes.io/enforce
+                    operator: In
+                    values: ["restricted"]
+      validate:
+        message: "Containers must run as non-root. Set securityContext.runAsNonRoot=true."
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): true
+            containers:
+              - =(securityContext):
+                  =(runAsNonRoot): true
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privilege-escalation
+  annotations:
+    policies.kyverno.io/title: Disallow Privilege Escalation
+    policies.kyverno.io/description: >
+      allowPrivilegeEscalation must be explicitly set to false on all containers
+      to prevent setuid/sudo escalation within the container.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaceSelector:
+                matchExpressions:
+                  - key: pod-security.kubernetes.io/enforce
+                    operator: In
+                    values: ["restricted"]
+      validate:
+        message: "allowPrivilegeEscalation must be set to false."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false

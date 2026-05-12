@@ -1,0 +1,123 @@
+# ArgoCD AppProject — one per tenant team.
+# Enforces CD-layer isolation: each team can only deploy to their own namespace
+# and pull from their own ECR repository.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-01
+  namespace: argocd
+spec:
+  description: CD project for team-01
+
+  sourceRepos:
+    - "https://github.com/hrs-group/platform-app"
+
+  destinations:
+    - namespace: team-01
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist: []  # Teams cannot create cluster-scoped resources
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: "apps"
+      kind: "*"
+    - group: "autoscaling"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "Ingress"
+    - group: "batch"
+      kind: "*"
+
+  roles:
+    - name: developer
+      description: team-01 developers — sync and view
+      policies:
+        - p, proj:team-01:developer, applications, get, team-01/*, allow
+        - p, proj:team-01:developer, applications, sync, team-01/*, allow
+        - p, proj:team-01:developer, applications, create, team-01/*, allow
+        - p, proj:team-01:developer, applications, update, team-01/*, allow
+      groups:
+        - team-01-developers
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-02
+  namespace: argocd
+spec:
+  description: CD project for team-02
+
+  sourceRepos:
+    - "https://github.com/hrs-group/platform-app"
+
+  destinations:
+    - namespace: team-02
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: "apps"
+      kind: "*"
+    - group: "autoscaling"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "Ingress"
+    - group: "batch"
+      kind: "*"
+
+  roles:
+    - name: developer
+      description: team-02 developers — sync and view
+      policies:
+        - p, proj:team-02:developer, applications, get, team-02/*, allow
+        - p, proj:team-02:developer, applications, sync, team-02/*, allow
+        - p, proj:team-02:developer, applications, create, team-02/*, allow
+        - p, proj:team-02:developer, applications, update, team-02/*, allow
+      groups:
+        - team-02-developers
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-03
+  namespace: argocd
+spec:
+  description: CD project for team-03
+
+  sourceRepos:
+    - "https://github.com/hrs-group/platform-app"
+
+  destinations:
+    - namespace: team-03
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: "apps"
+      kind: "*"
+    - group: "autoscaling"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "Ingress"
+    - group: "batch"
+      kind: "*"
+
+  roles:
+    - name: developer
+      description: team-03 developers — sync and view
+      policies:
+        - p, proj:team-03:developer, applications, get, team-03/*, allow
+        - p, proj:team-03:developer, applications, sync, team-03/*, allow
+        - p, proj:team-03:developer, applications, create, team-03/*, allow
+        - p, proj:team-03:developer, applications, update, team-03/*, allow
+      groups:
+        - team-03-developers

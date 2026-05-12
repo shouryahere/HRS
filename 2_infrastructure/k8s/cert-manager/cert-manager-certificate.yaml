@@ -1,0 +1,20 @@
+# Wildcard certificate for *.platform.hrstravel.com
+# Covers all tenant subdomains: team-01.platform.hrstravel.com, team-02.platform.hrstravel.com, etc.
+# Stored as a Secret in the ingress-nginx namespace so the ingress controller can mount it.
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-wildcard
+  namespace: ingress-nginx
+spec:
+  secretName: platform-hrstravel-com-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: "*.platform.hrstravel.com"
+  dnsNames:
+    - "*.platform.hrstravel.com"
+    - "platform.hrstravel.com"
+  duration: 2160h      # 90 days (Let's Encrypt default)
+  renewBefore: 360h    # Renew 15 days before expiry
