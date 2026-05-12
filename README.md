@@ -1,321 +1,161 @@
 # HRS Multi-Tenant Platform Engineering Assessment
 
-A comprehensive platform engineering solution for **HRS TravelTech**, demonstrating scalable multi-tenant architecture, infrastructure as code, and observability best practices.
+A production-grade multi-tenant SaaS platform for **HRS TravelTech** supporting 20+ engineering teams (250+ engineers), scalable to 50+ teams on AWS EKS.
 
-> **📖 START HERE:** [DESIGN_PLAN.md](DESIGN_PLAN.md) — Complete design plan covering architecture, scalability, security, cost estimation, and 4-phase implementation roadmap.
+## Status: Complete ✅
 
-## 📋 Assessment Overview
-
-**Goal**: Design and implement a multi-tenant SaaS platform supporting 20+ engineering teams (250+ engineers) with the ability to scale to 50+ teams.
-
-**Duration**: 2-4 hours  
-**Region**: AWS eu-central-1  
-**Tech Stack**: Terraform, Kubernetes (EKS), OpenTelemetry, New Relic, GitHub Actions  
-**Key Metrics**: $911/month infrastructure (~$18.22/team at 50-team scale) | 95% isolation (4-layer defense)
+All three phases are implemented and committed.
 
 ---
 
-## 📁 Repository Structure
+## Repository structure
 
 ```
 .
-├── 1_platform_design/              # Architecture Design & Strategy
-│   ├── ARCHITECTURE.md             # Complete architecture document
-│   ├── README.md                   # Design overview
+├── 1_platform_design/                    # Phase 1 — Architecture Design
+│   ├── ARCHITECTURE.md                   # Full architecture spec (v2.1)
+│   ├── README.md                         # Design overview and decisions
 │   └── architecture/
-│       └── ARCHITECTURE_DIAGRAM.md # Detailed system diagram (Mermaid)
+│       ├── ARCHITECTURE_DIAGRAM.md       # Mermaid architecture diagram
+│       └── ARCHITECTURE_DIAGRAM.svg      # SVG architecture diagram
 │
-├── 2_infrastructure/               # Infrastructure as Code (Terraform)
+├── 2_infrastructure/                     # Phase 2 — Infrastructure as Code
 │   ├── terraform/
-│   │   ├── main.tf                # Core infrastructure
-│   │   ├── vpc.tf                 # VPC, subnets, security groups
-│   │   ├── eks.tf                 # EKS cluster configuration
-│   │   ├── tenants.tf             # Multi-tenant namespace setup
-│   │   ├── rds.tf                 # RDS PostgreSQL
-│   │   ├── s3.tf                  # S3 artifact storage
-│   │   ├── iam.tf                 # IAM roles & policies
-│   │   ├── cicd.tf                # CodeBuild/CodePipeline
-│   │   ├── variables.tf           # Input variables
-│   │   ├── outputs.tf             # Output values
-│   │   └── terraform.tfvars       # Default values
+│   │   ├── backend.tf                    # S3 + DynamoDB remote state
+│   │   ├── main.tf                       # Provider configuration
+│   │   ├── variables.tf                  # Input variables
+│   │   ├── terraform.tfvars              # Environment values (no secrets)
+│   │   ├── versions.tf                   # Provider version pins
+│   │   ├── vpc.tf                        # VPC, subnets, NAT GWs, Flow Logs, VPC endpoints
+│   │   ├── eks.tf                        # EKS 1.32, Cilium, ArgoCD, Kyverno, cert-manager, ESO
+│   │   ├── iam.tf                        # All IAM/IRSA roles (cluster, nodes, per-component, per-tenant)
+│   │   ├── rds.tf                        # PostgreSQL 16 Multi-AZ + RDS Proxy
+│   │   ├── s3.tf                         # Asset bucket (15-shard), KMS, access logs
+│   │   ├── ecr.tf                        # ECR repos per team, lifecycle policies
+│   │   ├── secrets_manager.tf            # Secrets Manager + KMS key
+│   │   ├── karpenter.tf                  # Karpenter v1.0, Spot interruption SQS/EventBridge
+│   │   └── outputs.tf                    # Cluster endpoint, ECR URLs, role ARNs
 │   │
-│   ├── manifests/
-│   │   ├── namespaces.yaml        # Kubernetes namespace definitions
-│   │   ├── network-policies.yaml  # Network policies for isolation
-│   │   ├── rbac.yaml              # RBAC roles and bindings
-│   │   └── sample-app.yaml        # Sample tenant workload
+│   ├── k8s/
+│   │   ├── namespaces/                   # Tenant namespaces (PSS restricted)
+│   │   ├── network-policies/             # Default-deny + allow-list (tenant + platform)
+│   │   ├── rbac/                         # ServiceAccounts, Roles, RoleBindings per team
+│   │   ├── quotas/                       # ResourceQuota + LimitRange per team
+│   │   ├── karpenter/                    # NodePool + EC2NodeClass (v1.0 API)
+│   │   ├── argocd/                       # AppProjects, ApplicationSet, Image Updater
+│   │   ├── kyverno/                      # ClusterPolicies (Audit → Enforce)
+│   │   ├── cert-manager/                 # ClusterIssuers (Let's Encrypt), wildcard cert
+│   │   └── external-secrets/            # ClusterSecretStore + per-tenant ExternalSecrets
 │   │
-│   └── README.md                  # Infrastructure deployment guide
+│   └── README.md                         # Deployment guide
 │
-├── 3_observability/                # Observability & Monitoring
-│   ├── manifests/
-│   │   ├── opentelemetry.yaml     # OpenTelemetry collector
-│   │   ├── sample-app-otel.yaml   # Instrumented sample app
-│   │   └── new-relic-config.yaml  # New Relic integration
-│   │
-│   ├── dashboards/
-│   │   ├── platform-metrics.json  # Platform SLI/SLO dashboard
-│   │   └── tenant-isolation.json  # Tenant-specific metrics
-│   │
-│   └── README.md                  # Observability setup guide
+├── 3_observability/                      # Phase 3 — Observability
+│   ├── otel/otel-collector.yaml          # OTel Collector DaemonSet → New Relic
+│   ├── fluent-bit/fluent-bit.yaml        # Fluent Bit DaemonSet → CloudWatch
+│   ├── sample-app/                       # Python/FastAPI app with OTel instrumentation
+│   ├── dashboards/                       # New Relic dashboard definitions (JSON)
+│   │   ├── platform-overview.json        # Cluster health, SLO burn rate
+│   │   ├── per-tenant.json               # Per-team service health, DB latency
+│   │   └── dora-metrics.json             # Deployment frequency, lead time, MTTR
+│   ├── alerts/alert-rules.yaml           # SLO, latency, CrashLoop, node memory, TLS, RDS
+│   └── README.md                         # Observability setup guide
 │
-├── .github/
-│   └── workflows/
-│       └── deploy.yml             # GitHub Actions CI/CD workflow
-│
-├── README.md                       # This file
-└── devops-engineer-assessment.pdf # Original assessment document
+├── .github/workflows/ci.yml              # CI: OIDC auth, Trivy scan, ECR push, GitOps write-back
+├── scripts/bootstrap.sh                  # Run ONCE before terraform init (creates S3 + DynamoDB)
+├── DESIGN_PLAN_new.md                    # Master design plan (v2.1)
+└── devops-engineer-assessment.pdf        # Original assessment
 ```
 
 ---
 
-## 🎯 Key Deliverables
-
-### 1️⃣ Platform Design (Complete ✅)
-- ✅ **Architecture Diagram**: High-level system design with all components
-- ✅ **Multi-Tenancy Strategy**: Namespace-based isolation with network policies + RBAC
-- ✅ **Scalability Approach**: HPA for pods, cluster autoscaler for nodes (20 → 50+ teams)
-- ✅ **Security Model**: Network isolation, IAM least-privilege, encryption at rest/transit
-- ✅ **Cost Estimation**: 
-  - **20 teams**: ~$854/month (~$43/team)
-  - **50 teams**: ~$1,680/month (~$33/team)
-- ✅ **Design Trade-offs**: Namespace-based vs. cluster-per-tenant, EKS vs. ECS, shared DB vs. per-tenant
-
-### 2️⃣ Infrastructure as Code (In Progress 🔄)
-- Terraform modules for:
-  - AWS VPC with multi-AZ, security groups, NAT gateways
-  - EKS cluster with auto-scaling node groups
-  - Multi-tenant namespace configuration with RBAC + network policies
-  - RDS PostgreSQL (Multi-AZ) for tenant data
-  - S3 bucket for artifact storage with tenant-specific IAM policies
-  - CodeBuild/CodePipeline for CI/CD
-  - IAM roles with least-privilege access per service
-
-- Kubernetes manifests for:
-  - Namespace definitions (tenant-alpha, tenant-beta, ... tenant-N)
-  - Network policies (deny-all ingress by default)
-  - RBAC (ClusterRole/RoleBinding per tenant)
-  - Sample tenant workload deployment
-
-### 3️⃣ Observability (In Progress 🔄)
-- OpenTelemetry collector deployment
-- OTLP exporter configuration for New Relic
-- Sample Python/Go application with telemetry instrumentation
-- Platform-level metrics:
-  - Pipeline execution time
-  - Cluster resource utilization (CPU, memory)
-  - Tenant request rates
-  - API latency (p99)
-  - Error rates
-- SLI/SLO definitions:
-  - API latency p99 < 500ms
-  - Error rate < 1%
-  - Availability > 99.9%
-- Sample dashboards and alert rules
-
-### 4️⃣ Documentation (In Progress 🔄)
-- Deployment and setup instructions
-- Security best practices implementation
-- Design decision rationale
-- Troubleshooting and runbooks
-
----
-
-## 🏗️ Architecture Highlights
-
-### Multi-Tenancy Isolation
-
-| Layer | Mechanism | Benefit |
-|-------|-----------|---------|
-| **Kubernetes Namespaces** | One namespace per tenant | Logical boundary, resource quotas |
-| **Network Policies** | L3/L4 deny-all + allow intra-namespace | Network-level isolation |
-| **RBAC** | ClusterRole per tenant (namespace-scoped) | Prevents cross-tenant access to APIs |
-| **IAM Roles** | IRSA (IAM Roles for Service Accounts) | Least-privilege AWS API access per pod |
-| **Database** | Schema + row-level security per tenant | Data-level isolation |
-| **Storage** | S3 bucket policies + IAM roles | Artifact isolation |
-
-### Scalability (20 → 50+ teams)
-
-```
-Horizontal Pod Autoscaling (HPA):
-  - Min: 2 replicas/team, Max: 10 replicas/team
-  - Trigger: CPU > 70%, Memory > 80%
-  - Result: Auto-scale pods based on demand
-
-Cluster Autoscaling:
-  - Min: 2 nodes, Max: 20 nodes
-  - Node types: t3.medium, t3.large, t3.xlarge (mixed instances)
-  - Result: Provision/deprovision nodes as pods scale
-
-Database Scaling:
-  - RDS Multi-AZ with read replicas
-  - Connection pooling via PgBouncer
-  - Result: Support 20-50 teams with single RDS instance
-
-Storage:
-  - S3 auto-scales transparently
-  - CloudFront caching for artifact downloads
-  - Result: No provisioning needed
-```
-
-### Cost Efficiency
-
-| Resource | Cost | Notes |
-|----------|------|-------|
-| **EKS Control Plane** | $73/month | Fixed cost, shared across all tenants |
-| **EC2 Nodes** | ~$270/month | Auto-scales with demand (2-20 nodes) |
-| **RDS (Multi-AZ)** | ~$345/month | Shared across all tenants |
-| **Storage** | ~$32/month | S3 + NAT Gateway |
-| **Monitoring** | ~$52/month | CloudWatch + New Relic (optional) |
-| **Total** | **~$854/month** | **~$3.40/engineer/month** |
-
----
-
-## 🚀 Quick Start
+## Quick start
 
 ### Prerequisites
+- AWS CLI with admin credentials
+- Terraform ≥ 1.7, kubectl, helm ≥ 3
 
-- AWS Account with eu-central-1 access
-- Terraform >= 1.0
-- kubectl >= 1.27
-- Docker (for container builds)
-- GitHub Copilot (optional, for AI-assisted development)
+### 1. Bootstrap remote state (once only)
 
-### Deployment Steps
+```bash
+bash scripts/bootstrap.sh
+```
 
-1. **Initialize Terraform**
-   ```bash
-   cd 2_infrastructure/terraform
-   terraform init
-   terraform plan
-   terraform apply
-   ```
+### 2. Deploy infrastructure
 
-2. **Configure kubectl**
-   ```bash
-   aws eks update-kubeconfig --region eu-central-1 --name hrs-platform-eks
-   kubectl get nodes
-   ```
+```bash
+cd 2_infrastructure/terraform
+terraform init
 
-3. **Deploy Namespaces & RBAC**
-   ```bash
-   kubectl apply -f ../manifests/namespaces.yaml
-   kubectl apply -f ../manifests/rbac.yaml
-   kubectl apply -f ../manifests/network-policies.yaml
-   ```
+TF_VAR_rds_master_password=<password> \
+TF_VAR_newrelic_license_key=<key> \
+terraform apply
+```
 
-4. **Deploy Sample Tenant Workload**
-   ```bash
-   kubectl apply -f ../manifests/sample-app.yaml
-   ```
+### 3. Apply Kubernetes manifests
 
-5. **Set Up Observability**
-   ```bash
-   cd ../3_observability
-   kubectl apply -f manifests/opentelemetry.yaml
-   ```
+```bash
+aws eks update-kubeconfig --name hrs-platform --region eu-central-1
 
-See [2_infrastructure/README.md](./2_infrastructure/README.md) for detailed instructions.
+kubectl apply -f 2_infrastructure/k8s/namespaces/
+kubectl apply -f 2_infrastructure/k8s/network-policies/
+kubectl apply -f 2_infrastructure/k8s/rbac/
+kubectl apply -f 2_infrastructure/k8s/quotas/
+kubectl apply -f 2_infrastructure/k8s/karpenter/
+kubectl apply -f 2_infrastructure/k8s/argocd/
+kubectl apply -f 2_infrastructure/k8s/kyverno/
+kubectl apply -f 2_infrastructure/k8s/cert-manager/
+kubectl apply -f 2_infrastructure/k8s/external-secrets/
+```
 
----
+### 4. Deploy observability
 
-## 📊 Security & Compliance
-
-✅ **Network Security**
-- VPC isolation with private/public subnets
-- Security groups with egress whitelist
-- Kubernetes network policies (deny-all ingress)
-- NACLs for additional layer (optional)
-
-✅ **Identity & Access**
-- IAM roles with least-privilege policies
-- RBAC for Kubernetes API access
-- IRSA for pod-level AWS API access
-- Secrets Manager for credentials
-
-✅ **Data Protection**
-- Encryption at rest (RDS via AWS KMS, S3, EBS)
-- Encryption in transit (TLS 1.3 for all APIs)
-- Row-level security (RLS) in RDS per tenant
-
-✅ **Audit & Compliance**
-- CloudTrail for AWS API audit logs
-- EKS audit logging enabled
-- VPC Flow Logs for network traffic (optional)
+```bash
+kubectl apply -f 3_observability/otel/otel-collector.yaml
+kubectl apply -f 3_observability/fluent-bit/fluent-bit.yaml
+```
 
 ---
 
-## 📈 Observability & Monitoring
+## Architecture highlights
 
-### SLI/SLO Targets
+### 5-layer tenant isolation
 
-| SLI | SLO Target | Mechanism |
-|-----|-----------|-----------|
-| **API Latency (p99)** | < 500ms | HPA + caching |
-| **Error Rate** | < 1% | Application monitoring |
-| **Availability** | > 99.9% | Multi-AZ + auto-recovery |
-| **Tenant Isolation** | 100% | Network policies + RBAC + DB schemas |
+| Layer | Control | Implementation |
+|-------|---------|----------------|
+| 1 — Namespace | Pod Security Standards (restricted) | `pod-security.kubernetes.io/enforce: restricted` |
+| 2 — Network | Cilium eBPF default-deny | `NetworkPolicy` per namespace |
+| 3 — Identity | RBAC | Namespace-scoped Roles only — no cluster-wide access |
+| 4 — Cloud credentials | IRSA | Per-team IAM roles scoped to `hrs/<team>/*` paths |
+| 5 — Policy | Kyverno | Resource limits, ECR-only images, no NodePort, non-root |
 
-### Metrics Collected
+### Key design decisions
 
-- **Platform Metrics**: Cluster CPU/memory, pod count, node count
-- **Application Metrics**: Request rate, latency, error rate
-- **Tenant Metrics**: Per-tenant request count, per-tenant latency
-- **Infrastructure Metrics**: Node health, disk usage, network I/O
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Tenancy model | Namespace-per-team | Cost efficiency; strong isolation via 5 layers |
+| CNI | Cilium (ENI chaining) | eBPF L7 policies + Hubble observability; compatible with VPC CNI |
+| GitOps | ArgoCD + Image Updater | Per-team AppProjects; OIDC→ECR→Git tag loop; selfHeal |
+| Secrets | ESO + Secrets Manager | Values never touch etcd; IRSA-scoped per team |
+| DB | RDS + Proxy + RLS | Connection pooling (1000 clients); row-level isolation engine-enforced |
+| Autoscaling | Karpenter v1.0 | NodePool + EC2NodeClass; Spot + on-demand; 30s consolidation |
+| TLS | ACM (ALB) + Let's Encrypt (in-cluster) | DNS-01 via Route53 IRSA; wildcard `*.platform.hrstravel.com` |
+| CI auth | GitHub Actions OIDC | `AssumeRoleWithWebIdentity` — zero stored AWS credentials |
 
----
+### Cost
 
-## 🛠️ Technologies Used
-
-| Category | Technology | Why |
-|----------|-----------|-----|
-| **Cloud** | AWS (eu-central-1) | Enterprise grade, HRS standard |
-| **IaC** | Terraform | Multi-cloud support, version control |
-| **Orchestration** | Kubernetes (EKS) | Industry standard for multi-tenancy |
-| **CI/CD** | GitHub Actions + CodePipeline | Native GitHub integration + AWS services |
-| **Observability** | OpenTelemetry + New Relic | Vendor-agnostic + powerful analytics |
-| **Monitoring** | CloudWatch + Prometheus | AWS-native + open-source standards |
-| **Container Registry** | ECR | AWS-native, integrated with IAM |
-| **Secrets** | AWS Secrets Manager | AWS-native, rotation support |
-
----
-
-## 📝 Design Rationale
-
-### Why Namespace-Based Multi-Tenancy?
-✅ **Cost**: Shared infrastructure across all tenants  
-✅ **Isolation**: Strong isolation via network policies + RBAC  
-✅ **Scalability**: Linear scaling with tenant count  
-⚠️ **Trade-off**: Shared control plane (acceptable with monitoring)
-
-### Why EKS vs. ECS?
-✅ **Multi-Tenancy**: Native namespace + RBAC support  
-✅ **Industry Standard**: Kubernetes ecosystem maturity  
-✅ **Portability**: Can migrate to other clouds  
-⚠️ **Trade-off**: Higher cost than ECS ($73/month for control plane)
-
-### Why Shared RDS?
-✅ **Cost**: No duplication of database per tenant  
-✅ **Simplicity**: Single backup/disaster recovery strategy  
-⚠️ **Trade-off**: Requires row-level security (RLS) implementation
+| Scenario | Monthly | Per team (50 teams) |
+|----------|---------|---------------------|
+| EKS 1.32 (extended support) | ~$1,379 | ~$28 |
+| After upgrade to EKS 1.33 | ~$941 | ~$19 |
 
 ---
 
-## 📚 Additional Resources
+## Adding a new team
 
-- [Architecture Design Document](./1_platform_design/ARCHITECTURE.md)
-- [Infrastructure Deployment Guide](./2_infrastructure/README.md)
-- [Observability Setup Guide](./3_observability/README.md)
-- [Original Assessment](./devops-engineer-assessment.pdf)
+1. Add an entry to `teams` in `2_infrastructure/terraform/terraform.tfvars`
+2. Add a namespace block to `2_infrastructure/k8s/namespaces/namespaces.yaml`
+3. Duplicate a team block in `network-policies/`, `rbac/`, and `quotas/`
+4. Add the team to the ArgoCD ApplicationSet list generator
+5. `terraform apply` → `kubectl apply -f 2_infrastructure/k8s/`
 
----
-
-## 📧 Contact & Support
-
-For questions or issues, refer to the design documentation or reach out to the platform engineering team.
-
----
-
-**Assessment Status**: In Progress 🔄  
-**Last Updated**: May 11, 2026  
-**Deployment Region**: AWS eu-central-1
+The team gets: namespace + PSS, network policies, RBAC, ResourceQuota, IRSA role, ECR repo, ESO secret path, ArgoCD AppProject + Application — all scoped exclusively to their namespace.
