@@ -1,0 +1,193 @@
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-size: 24px; font-weight: bold; fill: #222; }
+      .section-title { font-size: 14px; font-weight: bold; fill: #fff; }
+      .label { font-size: 12px; fill: #333; }
+      .component-label { font-size: 11px; fill: #333; font-weight: 500; }
+      .box { stroke: #333; stroke-width: 2; }
+      .section-box { stroke: #1f77b4; stroke-width: 2; fill: #e7f0f7; }
+      .tenant-box { stroke: #2ca02c; stroke-width: 2; fill: #e7f5e7; }
+      .critical-box { stroke: #d62728; stroke-width: 2; fill: #ffe7e7; }
+      .aws-box { stroke: #ff7f0e; stroke-width: 2; fill: #ffe7cc; }
+      .arrow { stroke: #666; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+      .dashed-arrow { stroke: #999; stroke-width: 1; stroke-dasharray: 5,5; fill: none; marker-end: url(#arrowhead-dashed); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#666" />
+    </marker>
+    <marker id="arrowhead-dashed" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#999" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="30" class="title" text-anchor="middle">HRS Multi-Tenant Platform Architecture</text>
+  <text x="700" y="50" class="label" text-anchor="middle" font-size="11">AWS eu-central-1 | 20+ Teams → 50+ Teams | EKS-based Multi-Tenancy</text>
+
+  <!-- Top Section: ALB -->
+  <rect x="300" y="70" width="800" height="50" class="section-box" rx="5"/>
+  <text x="700" y="95" class="section-title" text-anchor="middle">Internet-Facing ALB (SSL/TLS Termination + Tenant Routing)</text>
+
+  <!-- Arrow to VPC -->
+  <line x1="700" y1="120" x2="700" y2="140" class="arrow"/>
+
+  <!-- VPC Section -->
+  <rect x="100" y="140" width="1200" height="650" class="section-box" rx="5" stroke-width="3"/>
+  <text x="110" y="160" class="section-title">AWS VPC (10.0.0.0/16)</text>
+
+  <!-- EKS Cluster Header -->
+  <rect x="120" y="175" width="1160" height="380" class="section-box" rx="5"/>
+  <text x="130" y="195" class="section-title">EKS Cluster (eu-central-1a/b/c)</text>
+
+  <!-- Tenant Namespaces -->
+  <!-- Tenant A -->
+  <rect x="140" y="210" width="200" height="140" class="tenant-box" rx="3"/>
+  <text x="240" y="228" class="component-label" text-anchor="middle">Tenant-A NS</text>
+  <circle cx="160" cy="250" r="8" fill="#2ca02c"/>
+  <text x="175" y="255" class="label">Workloads</text>
+  <circle cx="160" cy="280" r="8" fill="#2ca02c"/>
+  <text x="175" y="285" class="label">Services</text>
+  <circle cx="160" cy="310" r="8" fill="#2ca02c"/>
+  <text x="175" y="315" class="label">PVCs</text>
+
+  <!-- Tenant B -->
+  <rect x="370" y="210" width="200" height="140" class="tenant-box" rx="3"/>
+  <text x="470" y="228" class="component-label" text-anchor="middle">Tenant-B NS</text>
+  <circle cx="390" cy="250" r="8" fill="#2ca02c"/>
+  <text x="405" y="255" class="label">Workloads</text>
+  <circle cx="390" cy="280" r="8" fill="#2ca02c"/>
+  <text x="405" y="285" class="label">Services</text>
+  <circle cx="390" cy="310" r="8" fill="#2ca02c"/>
+  <text x="405" y="315" class="label">PVCs</text>
+
+  <!-- Tenant N (ellipsis) -->
+  <text x="620" y="280" class="component-label" text-anchor="middle" font-size="16">...</text>
+
+  <!-- Tenant C (last visible) -->
+  <rect x="700" y="210" width="200" height="140" class="tenant-box" rx="3"/>
+  <text x="800" y="228" class="component-label" text-anchor="middle">Tenant-N NS</text>
+  <circle cx="720" cy="250" r="8" fill="#2ca02c"/>
+  <text x="735" y="255" class="label">Workloads</text>
+  <circle cx="720" cy="280" r="8" fill="#2ca02c"/>
+  <text x="735" y="285" class="label">Services</text>
+  <circle cx="720" cy="310" r="8" fill="#2ca02c"/>
+  <text x="735" y="315" class="label">PVCs</text>
+
+  <!-- Isolation Layers (Right side) -->
+  <rect x="940" y="210" width="320" height="140" class="critical-box" rx="3"/>
+  <text x="1100" y="228" class="component-label" text-anchor="middle">Isolation Layers</text>
+  <text x="950" y="250" class="label" font-size="10">🔒 Layer 1: Namespace</text>
+  <text x="950" y="265" class="label" font-size="10">🔒 Layer 2: Network Policy</text>
+  <text x="950" y="280" class="label" font-size="10">🔒 Layer 3: RBAC</text>
+  <text x="950" y="295" class="label" font-size="10">🔒 Layer 4: IAM Roles</text>
+  <text x="950" y="315" class="label" font-size="10">CNI: Calico (eBPF)</text>
+  <text x="950" y="330" class="label" font-size="10">PSS: baseline enforced</text>
+  <text x="950" y="345" class="label" font-size="10">KMS: secrets encrypted</text>
+
+  <!-- Node Group -->
+  <rect x="140" y="365" width="1120" height="170" class="section-box" rx="3"/>
+  <text x="150" y="382" class="component-label">Node Group: t3.medium (Auto-scaling: 2-10 nodes)</text>
+
+  <!-- Nodes (simplified) -->
+  <rect x="160" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
+  <text x="210" y="415" class="label" text-anchor="middle" font-size="10">Node 1</text>
+  <text x="210" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
+  <text x="210" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+
+  <rect x="290" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
+  <text x="340" y="415" class="label" text-anchor="middle" font-size="10">Node 2</text>
+  <text x="340" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
+  <text x="340" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+
+  <text x="420" y="420" class="label" font-size="12">...</text>
+
+  <rect x="480" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
+  <text x="530" y="415" class="label" text-anchor="middle" font-size="10">Node N</text>
+  <text x="530" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
+  <text x="530" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+
+  <!-- Karpenter & ResourceQuota -->
+  <rect x="620" y="395" width="150" height="60" class="section-box" rx="3"/>
+  <text x="695" y="415" class="component-label" text-anchor="middle" font-size="11">Karpenter</text>
+  <text x="695" y="430" class="label" text-anchor="middle" font-size="9">Auto-scaling</text>
+  <text x="695" y="443" class="label" text-anchor="middle" font-size="9">Bin-packing</text>
+
+  <rect x="810" y="395" width="150" height="60" class="section-box" rx="3"/>
+  <text x="885" y="415" class="component-label" text-anchor="middle" font-size="11">ResourceQuota</text>
+  <text x="885" y="430" class="label" text-anchor="middle" font-size="9">CPU: 10 cores/tenant</text>
+  <text x="885" y="443" class="label" text-anchor="middle" font-size="9">Memory: 20Gi/tenant</text>
+
+  <rect x="1000" y="395" width="240" height="60" class="critical-box" rx="3"/>
+  <text x="1120" y="415" class="component-label" text-anchor="middle" font-size="11">Security Controls</text>
+  <text x="1010" y="430" class="label" font-size="9">• KMS Encryption</text>
+  <text x="1010" y="443" class="label" font-size="9">• Pod Security Standards</text>
+  <text x="1010" y="456" class="label" font-size="9">• Audit Logging</text>
+
+  <!-- External Infrastructure Section -->
+  <rect x="120" y="570" width="1160" height="200" class="aws-box" rx="5"/>
+  <text x="130" y="590" class="section-title">Shared Infrastructure (Outside Cluster)</text>
+
+  <!-- RDS -->
+  <rect x="140" y="605" width="180" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
+  <text x="230" y="625" class="component-label" text-anchor="middle">RDS PostgreSQL</text>
+  <text x="150" y="645" class="label" font-size="10">• Multi-AZ</text>
+  <text x="150" y="660" class="label" font-size="10">• Schema isolation</text>
+  <text x="150" y="675" class="label" font-size="10">  (schema_a, b, c)</text>
+  <text x="150" y="690" class="label" font-size="10">• RDS Proxy</text>
+  <text x="150" y="705" class="label" font-size="10">  (conn pooling)</text>
+  <text x="150" y="720" class="label" font-size="10">• IAM Auth</text>
+  <text x="150" y="735" class="label" font-size="10">• Encrypted at rest</text>
+
+  <!-- ECR -->
+  <rect x="350" y="605" width="150" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
+  <text x="425" y="625" class="component-label" text-anchor="middle">ECR</text>
+  <text x="360" y="645" class="label" font-size="10">• Docker Images</text>
+  <text x="360" y="660" class="label" font-size="10">• Artifact storage</text>
+  <text x="360" y="675" class="label" font-size="10">• Tenant isolation</text>
+  <text x="360" y="690" class="label" font-size="10">  (IAM-based)</text>
+  <text x="360" y="705" class="label" font-size="10">• Image scan</text>
+  <text x="360" y="720" class="label" font-size="10">• Lifecycle policy</text>
+  <text x="360" y="735" class="label" font-size="10"></text>
+
+  <!-- S3 -->
+  <rect x="540" y="605" width="150" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
+  <text x="615" y="625" class="component-label" text-anchor="middle">S3</text>
+  <text x="550" y="645" class="label" font-size="10">• Artifact storage</text>
+  <text x="550" y="660" class="label" font-size="10">• Prefix isolation</text>
+  <text x="550" y="675" class="label" font-size="10">  (tenant-a/b/c)</text>
+  <text x="550" y="690" class="label" font-size="10">• IAM Bucket policy</text>
+  <text x="550" y="705" class="label" font-size="10">• VPC endpoint</text>
+  <text x="550" y="720" class="label" font-size="10">• Multi-prefix</text>
+  <text x="550" y="735" class="label" font-size="10">  sharding (50K r/s)</text>
+
+  <!-- CodePipeline/CodeBuild -->
+  <rect x="730" y="605" width="180" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
+  <text x="820" y="625" class="component-label" text-anchor="middle">CI/CD Pipeline</text>
+  <text x="740" y="645" class="label" font-size="10">• GitHub → CodeBuild</text>
+  <text x="740" y="660" class="label" font-size="10">• CodePipeline</text>
+  <text x="740" y="675" class="label" font-size="10">• Build → ECR push</text>
+  <text x="740" y="690" class="label" font-size="10">• CodeDeploy</text>
+  <text x="740" y="705" class="label" font-size="10">• Deploy to namespace</text>
+  <text x="740" y="720" class="label" font-size="10">• RBAC-enforced</text>
+  <text x="740" y="735" class="label" font-size="10">• Tenant isolation</text>
+
+  <!-- Observability -->
+  <rect x="950" y="605" width="310" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
+  <text x="1105" y="625" class="component-label" text-anchor="middle">Observability Stack</text>
+  <text x="960" y="645" class="label" font-size="10">• OpenTelemetry Collector (DaemonSet)</text>
+  <text x="960" y="660" class="label" font-size="10">• New Relic (OTLP exporter)</text>
+  <text x="960" y="675" class="label" font-size="10">• Prometheus (metrics, tenant-labeled)</text>
+  <text x="960" y="690" class="label" font-size="10">• CloudWatch Logs (audit, tenant-namespaced)</text>
+  <text x="960" y="705" class="label" font-size="10">• SLIs/SLOs: latency (p99), error rate</text>
+  <text x="960" y="720" class="label" font-size="10">• Dashboards: platform + per-tenant metrics</text>
+  <text x="960" y="735" class="label" font-size="10">• Alerts: SLO violations, resource exhaustion</text>
+
+  <!-- Legend -->
+  <rect x="120" y="800" width="1160" height="80" class="section-box" rx="5"/>
+  <text x="130" y="820" class="section-title">Key Features & Isolation Strategy</text>
+
+  <text x="140" y="845" class="label" font-size="11"><tspan font-weight="bold">Multi-Tenancy (4-Layer Defense):</tspan> Namespace + NetworkPolicy (Calico CNI) + RBAC + IAM Roles | <tspan font-weight="bold">Storage:</tspan> RDS schema-based + S3 prefix-based</text>
+  <text x="140" y="862" class="label" font-size="11"><tspan font-weight="bold">Scalability:</tspan> Karpenter auto-scaling + RDS Proxy (1000 pooled conns) + S3 multi-prefix sharding | <tspan font-weight="bold">Security:</tspan> KMS encryption + Pod Security Standards + RBAC audit logging | <tspan font-weight="bold">Cost:</tspan> ~$911/mo infrastructure ($18.22/team at 50 teams)</text>
+
+</svg>
