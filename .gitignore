@@ -13,6 +13,9 @@ crash.*.log
 
 # Local secrets / overrides
 *.tfvars.local
+.secrets.local
+.env
+.env.local
 override.tf
 override.tf.json
 *_override.tf

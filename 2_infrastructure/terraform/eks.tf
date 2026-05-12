@@ -83,10 +83,6 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
-  labels = {
-    "eks.amazonaws.com/nodegroup" = "${var.cluster_name}-nodes"
-  }
-
   depends_on = [
     aws_iam_role_policy_attachment.eks_node_policy,
     aws_iam_role_policy_attachment.eks_cni_policy,
@@ -153,7 +149,57 @@ resource "helm_release" "cilium" {
     value = "true"
   }
 
+  # hubble-peer Service ships from the chart with internalTrafficPolicy=Local.
+  # In Cilium ENI chaining mode that prevents hubble-relay (single replica)
+  # from reaching the Cilium agent on other nodes via the Service ClusterIP,
+  # so the Relay flatlines with "context deadline exceeded". Cluster-wide
+  # service routing is what we want here.
+  set {
+    name  = "hubble.peerService.clusterDomain"
+    value = "cluster.local"
+  }
+
+  # The chart's hubble-ui frontend liveness probe is httpGet:/healthz with
+  # timeoutSeconds=1, periodSeconds=10. In ENI mode nginx isn't reliably
+  # answering the probe in 1s during startup (probably TCP handshake jitter
+  # over the Cilium-managed pod IP), so the container crashloops at ~30s
+  # intervals. Switch to TCP-socket probes with looser timing.
+  set {
+    name  = "hubble.ui.frontend.livenessProbe.tcpSocket.port"
+    value = "8081"
+  }
+  set {
+    name  = "hubble.ui.frontend.livenessProbe.initialDelaySeconds"
+    value = "15"
+  }
+  set {
+    name  = "hubble.ui.frontend.livenessProbe.periodSeconds"
+    value = "30"
+  }
+  set {
+    name  = "hubble.ui.frontend.livenessProbe.timeoutSeconds"
+    value = "5"
+  }
+
   depends_on = [aws_eks_node_group.main]
+}
+
+# The chart still doesn't have a values knob for hubble-peer's
+# internalTrafficPolicy (see issue cilium/cilium#XXXX). Patch it post-install.
+resource "null_resource" "hubble_peer_cluster_traffic" {
+  triggers = {
+    cilium_release = helm_release.cilium.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      kubectl patch svc -n kube-system hubble-peer \
+        -p '{"spec":{"internalTrafficPolicy":"Cluster"}}' || true
+      kubectl rollout restart deployment/hubble-relay -n kube-system || true
+    EOT
+  }
+
+  depends_on = [helm_release.cilium]
 }
 
 # ── ArgoCD ────────────────────────────────────────────────────────────────────
@@ -174,6 +220,7 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   version    = "7.3.4"
   namespace  = kubernetes_namespace.argocd.metadata[0].name
+  wait       = false
 
   set {
     name  = "server.service.type"
@@ -204,6 +251,58 @@ resource "helm_release" "kyverno" {
   chart      = "kyverno"
   version    = "3.2.6"
   namespace  = kubernetes_namespace.kyverno.metadata[0].name
+  wait       = false
+
+  # The chart's default cleanup CronJob image (bitnami/kubectl:1.28.5) was
+  # removed from Docker Hub after a Bitnami repo restructure, so the cleanup
+  # jobs end up in ImagePullBackOff. Pin to the kubernetes.io distribution
+  # of kubectl instead. registry.k8s.io/kubectl runs as root by default; the
+  # CronJobs enforce runAsNonRoot, so override to uid 65534 (nobody).
+  dynamic "set" {
+    for_each = toset([
+      "admissionReports",
+      "clusterAdmissionReports",
+      "ephemeralReports",
+      "clusterEphemeralReports",
+      "updateRequests",
+    ])
+    content {
+      name  = "cleanupJobs.${set.value}.image.repository"
+      value = "registry.k8s.io/kubectl"
+    }
+  }
+
+  dynamic "set" {
+    for_each = toset([
+      "admissionReports",
+      "clusterAdmissionReports",
+      "ephemeralReports",
+      "clusterEphemeralReports",
+      "updateRequests",
+    ])
+    content {
+      name  = "cleanupJobs.${set.value}.image.tag"
+      value = "v1.30.0"
+    }
+  }
+
+  dynamic "set" {
+    for_each = toset([
+      "admissionReports",
+      "clusterAdmissionReports",
+      "ephemeralReports",
+      "clusterEphemeralReports",
+      "updateRequests",
+    ])
+    content {
+      name  = "cleanupJobs.${set.value}.securityContext.runAsUser"
+      value = "65534"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [wait]
+  }
 
   depends_on = [helm_release.cilium]
 }
@@ -225,6 +324,7 @@ resource "helm_release" "cert_manager" {
   chart      = "cert-manager"
   version    = "1.15.1"
   namespace  = kubernetes_namespace.cert_manager.metadata[0].name
+  wait       = false
 
   set {
     name  = "installCRDs"
@@ -233,6 +333,10 @@ resource "helm_release" "cert_manager" {
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = aws_iam_role.cert_manager.arn
+  }
+  set {
+    name  = "startupapicheck.enabled"
+    value = "false"
   }
 
   depends_on = [helm_release.cilium]
@@ -283,7 +387,7 @@ resource "helm_release" "aws_lb_controller" {
 # the subdomain to Route53.
 resource "aws_route53_zone" "platform" {
   name    = var.domain_name
-  comment = "Delegated subdomain for ${var.cluster_name} — managed by Terraform"
+  comment = "Delegated subdomain for ${var.cluster_name} - managed by Terraform"
   tags    = { Name = "${var.cluster_name}-zone" }
 }
 
@@ -344,6 +448,7 @@ resource "helm_release" "external_secrets" {
   chart      = "external-secrets"
   version    = "0.10.3"
   namespace  = kubernetes_namespace.external_secrets.metadata[0].name
+  wait       = false
 
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
@@ -351,4 +456,79 @@ resource "helm_release" "external_secrets" {
   }
 
   depends_on = [helm_release.cilium]
+}
+
+# ── Disable SrcDstCheck on node ENIs ─────────────────────────────────────────
+# In Cilium ENI chaining mode, pod IPs are managed by Cilium IPAM and may not
+# appear as explicit secondary IPs on a node's ENI in the EC2 view. EC2's
+# default SrcDstCheck=true drops packets destined for IPs not explicitly on the
+# ENI, which manifests as ALB targets in "Request timed out" state even though
+# pod-local health probes succeed.
+#
+# EKS managed node groups don't expose ENI source_dest_check through the
+# launch template surface, so we shell out to the AWS CLI on every apply.
+# Triggered by node group ID; safe to run repeatedly. Requires `aws` and `jq`
+# on PATH where Terraform is run.
+resource "null_resource" "disable_node_eni_srcdstcheck" {
+  triggers = {
+    node_group = aws_eks_node_group.main.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      INSTANCES=$(aws ec2 describe-instances --region ${var.aws_region} \
+        --filters "Name=tag:eks:cluster-name,Values=${aws_eks_cluster.main.name}" \
+                  "Name=instance-state-name,Values=running" \
+        --query 'Reservations[].Instances[].InstanceId' --output text)
+      for I in $INSTANCES; do
+        ENIS=$(aws ec2 describe-network-interfaces --region ${var.aws_region} \
+          --filters "Name=attachment.instance-id,Values=$I" \
+          --query 'NetworkInterfaces[].NetworkInterfaceId' --output text)
+        for E in $ENIS; do
+          aws ec2 modify-network-interface-attribute --region ${var.aws_region} \
+            --network-interface-id $E --no-source-dest-check
+        done
+      done
+    EOT
+  }
+
+  depends_on = [aws_eks_node_group.main, helm_release.cilium]
+}
+
+# ── Apply all in-cluster Kubernetes manifests ────────────────────────────────
+# Single orchestrator that materialises namespaces, RBAC, quotas, network
+# policies, ExternalSecrets, cert-manager issuers, Kyverno policies, observ-
+# ability DaemonSets, and tenant sample apps. Runs after every relevant
+# upstream change (EKS NG ID, Helm releases of the platform addons). Requires
+# kubectl + envsubst on PATH and a kubeconfig pointing at this cluster.
+resource "null_resource" "apply_manifests" {
+  triggers = {
+    node_group         = aws_eks_node_group.main.id
+    argocd_release     = helm_release.argocd.id
+    kyverno_release    = helm_release.kyverno.id
+    eso_release        = helm_release.external_secrets.id
+    cert_mgr_release   = helm_release.cert_manager.id
+    lbc_release        = helm_release.aws_lb_controller.id
+  }
+
+  provisioner "local-exec" {
+    command = "${path.module}/../../scripts/apply-manifests.sh"
+    environment = {
+      AWS_ACCOUNT_ID = data.aws_caller_identity.current.account_id
+      ACM_CERT_ARN   = aws_acm_certificate_validation.platform.certificate_arn
+      AWS_REGION     = var.aws_region
+    }
+  }
+
+  depends_on = [
+    null_resource.disable_node_eni_srcdstcheck,
+    null_resource.hubble_peer_cluster_traffic,
+    helm_release.argocd,
+    helm_release.kyverno,
+    helm_release.external_secrets,
+    helm_release.cert_manager,
+    helm_release.aws_lb_controller,
+    aws_acm_certificate_validation.platform,
+  ]
 }

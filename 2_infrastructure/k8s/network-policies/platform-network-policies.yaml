@@ -1,142 +1,21 @@
-# Platform namespace network policies.
-# Platform components (ArgoCD, Kyverno, etc.) are isolated from tenant namespaces
-# but may reach the Kubernetes API server and each other as needed.
----
-# ArgoCD — allow intra-namespace + egress to kube-apiserver + git remotes
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-  namespace: argocd
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-intra-namespace
-  namespace: argocd
-spec:
-  podSelector: {}
-  ingress:
-    - from:
-        - podSelector: {}
-  egress:
-    - to:
-        - podSelector: {}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-dns
-  namespace: argocd
-spec:
-  podSelector: {}
-  egress:
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
----
-# ArgoCD needs to reach the Kubernetes API server (6443) and GitHub (443)
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-apiserver-and-git
-  namespace: argocd
-spec:
-  podSelector: {}
-  egress:
-    - ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 6443
----
-# cert-manager — needs to reach Route53 (HTTPS) for DNS-01 challenges
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-  namespace: cert-manager
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-intra-namespace
-  namespace: cert-manager
-spec:
-  podSelector: {}
-  ingress:
-    - from:
-        - podSelector: {}
-  egress:
-    - to:
-        - podSelector: {}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-dns-and-https
-  namespace: cert-manager
-spec:
-  podSelector: {}
-  egress:
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-        - protocol: TCP
-          port: 443
----
-# external-secrets — needs to reach Secrets Manager VPC endpoint (HTTPS)
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-  namespace: external-secrets
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-intra-namespace
-  namespace: external-secrets
-spec:
-  podSelector: {}
-  ingress:
-    - from:
-        - podSelector: {}
-  egress:
-    - to:
-        - podSelector: {}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-dns-and-https
-  namespace: external-secrets
-spec:
-  podSelector: {}
-  egress:
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-        - protocol: TCP
-          port: 443
+# Platform namespace network policies — SUPERSEDED.
+#
+# This file previously defined vanilla NetworkPolicy objects for the argocd,
+# cert-manager, external-secrets, and kyverno namespaces. Those policies are no
+# longer applied to the cluster because port-only egress rules do not reliably
+# allow traffic to the kube-apiserver ClusterIP (172.20.0.1:443) when Cilium is
+# running in ENI chaining mode on top of the AWS VPC CNI.
+#
+# Root cause: a Cilium identity-resolution race at pod startup. Pods open
+# connections before Cilium has resolved their security identity; the resulting
+# conntrack entries carry SourceSecurityID=0 and are never matched by subsequent
+# policy evaluation, producing persistent i/o timeouts to the API server. The
+# only reliable fix is to name `kube-apiserver` as a reserved Cilium entity in
+# a CiliumNetworkPolicy egress rule, which forces correct identity resolution.
+#
+# Current platform-namespace policy lives in:
+#   platform-cilium-network-policies.yaml
+#
+# Tenant namespace policies (which use vanilla NetworkPolicy without hitting
+# this race because tenant pods don't talk to kube-apiserver directly) remain
+# in tenant-network-policies.yaml.

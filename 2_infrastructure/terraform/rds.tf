@@ -28,7 +28,7 @@ resource "aws_db_parameter_group" "postgres" {
 resource "aws_db_instance" "main" {
   identifier        = "${var.cluster_name}-postgres"
   engine            = "postgres"
-  engine_version    = "16.3"
+  engine_version    = "16.8"
   instance_class    = var.rds_instance_class
   allocated_storage = 100
   storage_type      = "gp3"
@@ -173,7 +173,7 @@ resource "aws_db_proxy_default_target_group" "main" {
 }
 
 resource "aws_db_proxy_target" "main" {
-  db_instance_identifier = aws_db_instance.main.id
+  db_instance_identifier = aws_db_instance.main.identifier
   db_proxy_name          = aws_db_proxy.main.name
   target_group_name      = aws_db_proxy_default_target_group.main.name
 }

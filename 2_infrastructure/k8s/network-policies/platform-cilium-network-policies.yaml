@@ -1,0 +1,136 @@
+# CiliumNetworkPolicies for platform namespaces.
+#
+# Why these exist alongside platform-network-policies.yaml:
+# Vanilla NetworkPolicy with port-only egress rules does not reliably allow
+# traffic to the kube-apiserver ClusterIP (172.20.0.1:443) in Cilium ENI
+# chaining mode. The race is: pods start making connections before Cilium has
+# resolved their security identity; conntrack entries get created with
+# SourceSecurityID=0 and are never matched by subsequent policy evaluation,
+# producing persistent i/o timeouts to the API server.
+#
+# Naming `kube-apiserver` as a reserved Cilium entity in a CiliumNetworkPolicy
+# egress rule bypasses this race. We additionally allow `host`, `world`, and
+# `cluster` so that pods can also reach RDS, Secrets Manager, ECR, etc.,
+# plus DNS on 53/UDP+TCP.
+#
+# Apply: kubectl apply -f platform-cilium-network-policies.yaml
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: argocd
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: cert-manager
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: external-secrets
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: kyverno
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: karpenter
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: monitoring
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host
+        - world
+        - cluster
+    - toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP

@@ -150,16 +150,22 @@ resource "aws_iam_policy" "external_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecretVersionIds"
-      ]
-      # ESO ClusterSecretStore role is read-only across all hrs/ paths.
-      Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:hrs/*"
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:hrs/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:DescribeKey"]
+        Resource = aws_kms_key.secrets.arn
+      }
+    ]
   })
 }
 
@@ -443,6 +449,28 @@ resource "aws_iam_policy" "karpenter_controller" {
         Resource = aws_iam_role.eks_node.arn
       },
       {
+        # Instance profile management (required by Karpenter v0.37+)
+        Effect = "Allow"
+        Action = [
+          "iam:GetInstanceProfile",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:TagInstanceProfile"
+        ]
+        Resource = "*"
+      },
+      {
+        # Spot price history and on-demand pricing
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeSpotPriceHistory",
+          "pricing:GetProducts"
+        ]
+        Resource = "*"
+      },
+      {
         # EKS cluster info
         Effect = "Allow"
         Action = [
@@ -502,7 +530,7 @@ resource "aws_sqs_queue_policy" "karpenter_interruption" {
 # EventBridge rules feed spot/rebalance events into the interruption queue
 resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
   name        = "${var.cluster_name}-karpenter-spot-interruption"
-  description = "Spot interruption → Karpenter SQS"
+  description = "Spot interruption to Karpenter SQS"
 
   event_pattern = jsonencode({
     source      = ["aws.ec2"]
@@ -517,7 +545,7 @@ resource "aws_cloudwatch_event_target" "karpenter_spot_interruption" {
 
 resource "aws_cloudwatch_event_rule" "karpenter_rebalance" {
   name        = "${var.cluster_name}-karpenter-rebalance"
-  description = "EC2 rebalance recommendation → Karpenter SQS"
+  description = "EC2 rebalance recommendation to Karpenter SQS"
 
   event_pattern = jsonencode({
     source      = ["aws.ec2"]

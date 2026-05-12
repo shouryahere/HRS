@@ -1,4 +1,4 @@
-# Sample app deployment for team-01.
+# Sample app deployment for ${TEAM_ID}.
 # Demonstrates: IRSA ServiceAccount, ESO secret injection, OTel env vars,
 # node-local collector endpoint via Downward API.
 ---
@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sample-app
-  namespace: team-01
+  namespace: ${TEAM_ID}
 spec:
   replicas: 2
   selector:
@@ -20,20 +20,21 @@ spec:
       serviceAccountName: workload  # IRSA-annotated SA from rbac.yaml
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
+        runAsUser: 101    # nginx-unprivileged uid
+        runAsGroup: 101
+        fsGroup: 101
         seccompProfile:
           type: RuntimeDefault  # PSS restricted requirement
       containers:
         - name: app
           # ECR_REGISTRY/AWS_ACCOUNT_ID are substituted by ArgoCD Image Updater at deploy time.
           # For initial bootstrap, run: envsubst < deployment.yaml | kubectl apply -f -
-          image: ${AWS_ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/hrs-platform/team-01/app:latest
+          image: ${AWS_ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/hrs-platform/${TEAM_ID}/app:latest
           ports:
-            - containerPort: 8000
+            - containerPort: 8080  # nginx-unprivileged listens on 8080
           env:
             - name: TEAM_ID
-              value: team-01
+              value: ${TEAM_ID}
             - name: ENVIRONMENT
               value: production
             - name: DATABASE_URL
@@ -49,7 +50,7 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
             - name: OTEL_SERVICE_NAME
-              value: team-01-sample-app
+              value: ${TEAM_ID}-sample-app
           resources:
             requests:
               cpu: 100m
@@ -59,14 +60,14 @@ spec:
               memory: 512Mi
           readinessProbe:
             httpGet:
-              path: /health
-              port: 8000
+              path: /
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /health
-              port: 8000
+              path: /
+              port: 8080
             initialDelaySeconds: 15
             periodSeconds: 30
           securityContext:
@@ -74,25 +75,39 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: sample-app
-  namespace: team-01
+  namespace: ${TEAM_ID}
 spec:
   selector:
     app: sample-app
   ports:
     - port: 80
-      targetPort: 8000
+      targetPort: 8080
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sample-app
-  namespace: team-01
+  namespace: ${TEAM_ID}
   annotations:
     # AWS Load Balancer Controller — provisions an ALB and points it at this Service.
     kubernetes.io/ingress.class: alb
@@ -103,7 +118,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}  # From terraform output acm_certificate_arn
 spec:
   rules:
-    - host: team-01.platform.talkit.chat
+    - host: ${TEAM_ID}.platform.talkit.chat
       http:
         paths:
           - path: /

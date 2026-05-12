@@ -9,7 +9,8 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  amiFamily: AL2
+  amiSelectorTerms:
+    - alias: al2@latest
   role: hrs-platform-eks-node-role  # Must match aws_iam_role.eks_node.name in iam.tf
 
   subnetSelectorTerms:
@@ -70,7 +71,7 @@ spec:
           values: ["amd64"]
 
   disruption:
-    consolidationPolicy: WhenUnderutilized
+    consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 30s
 
   limits:

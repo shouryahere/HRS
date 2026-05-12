@@ -2,6 +2,18 @@
 # Enriches every log record with namespace (= team) and pod labels.
 # Ships to CloudWatch Logs, structured as JSON for easy querying.
 # IRSA on the ServiceAccount grants CloudWatch Logs access (aws_iam_role.fluent_bit in iam.tf).
+#
+# The monitoring namespace must run at PSS "privileged" because the DaemonSet
+# mounts /var/log and /var/lib/docker/containers via hostPath. This is the
+# standard pattern for node-level log collection and is bounded to the
+# monitoring namespace only (tenant namespaces stay at PSS "restricted").
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: v1
 kind: ServiceAccount
