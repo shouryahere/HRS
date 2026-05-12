@@ -22,6 +22,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault  # PSS restricted requirement
       containers:
         - name: app
           # ECR_REGISTRY/AWS_ACCOUNT_ID are substituted by ArgoCD Image Updater at deploy time.
