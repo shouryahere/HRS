@@ -151,6 +151,12 @@ resource "aws_db_proxy" "main" {
     secret_arn  = aws_secretsmanager_secret.rds_master.arn
   }
 
+  # Proxy needs the secret VALUE to exist, not just the secret resource.
+  depends_on = [
+    aws_secretsmanager_secret_version.rds_master,
+    aws_iam_role_policy_attachment.rds_proxy_secrets,
+  ]
+
   tags = { Name = "${var.cluster_name}-rds-proxy" }
 }
 

@@ -1,12 +1,19 @@
-# Wildcard certificate for *.platform.hrstravel.com
-# Covers all tenant subdomains: team-01.platform.hrstravel.com, team-02.platform.hrstravel.com, etc.
-# Stored as a Secret in the ingress-nginx namespace so the ingress controller can mount it.
+# cert-manager wildcard Certificate — used for IN-CLUSTER TLS only.
+# (External ALB TLS comes from ACM via aws_acm_certificate.platform in Terraform.)
+#
+# Use case: tenant pods that need mTLS to internal services, or service-mesh
+# certificates. Tenants reference this secret by name in their workloads.
+#
+# Stored in cert-manager namespace and synced into tenant namespaces via reflector
+# or duplicated as needed. The ClusterIssuer in cert-manager-issuer.yaml is the
+# real shared resource — tenants create their own Certificate objects pointing
+# at letsencrypt-prod.
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: platform-wildcard
-  namespace: ingress-nginx
+  namespace: cert-manager
 spec:
   secretName: platform-hrstravel-com-tls
   issuerRef:

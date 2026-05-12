@@ -21,7 +21,8 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
     security_group_ids      = [aws_security_group.eks_nodes.id]
     endpoint_private_access = true
-    endpoint_public_access  = false  # Private endpoint only — no public API surface
+    endpoint_public_access  = var.eks_endpoint_public_access
+    public_access_cidrs     = var.eks_endpoint_public_access ? var.eks_public_access_cidrs : null
   }
 
   encryption_config {
@@ -236,6 +237,64 @@ resource "helm_release" "cert_manager" {
 
   depends_on = [helm_release.cilium]
 }
+
+# ── AWS Load Balancer Controller ─────────────────────────────────────────────
+# Translates Kubernetes Ingress resources into AWS ALBs.
+# Installed in kube-system so it's centrally managed.
+resource "helm_release" "aws_lb_controller" {
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  version    = "1.8.1"
+  namespace  = "kube-system"
+
+  set {
+    name  = "clusterName"
+    value = aws_eks_cluster.main.name
+  }
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.aws_lb_controller.arn
+  }
+  set {
+    name  = "region"
+    value = var.aws_region
+  }
+  set {
+    name  = "vpcId"
+    value = aws_vpc.main.id
+  }
+
+  depends_on = [helm_release.cilium]
+}
+
+# ── ACM Certificate for ALB ─────────────────────────────────────────────────
+# Issues a wildcard TLS certificate validated via DNS in Route53.
+# Attached by the AWS Load Balancer Controller to the ALB listener.
+# Distinct from cert-manager's Let's Encrypt cert — that one is for in-cluster TLS.
+resource "aws_acm_certificate" "platform" {
+  domain_name               = "*.${var.domain_name}"
+  subject_alternative_names = [var.domain_name]
+  validation_method         = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = { Name = "${var.cluster_name}-platform-cert" }
+}
+
+# Note: DNS validation records must be created in Route53. If the hosted zone
+# is in this account, add `aws_route53_record` + `aws_acm_certificate_validation`.
+# Left out here because hosted-zone ownership is environment-specific.
 
 # ── External Secrets Operator ─────────────────────────────────────────────────
 resource "kubernetes_namespace" "external_secrets" {

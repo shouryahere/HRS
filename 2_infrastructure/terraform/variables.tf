@@ -27,6 +27,24 @@ variable "domain_name" {
   # cert-manager uses DNS-01 challenge via Route53.
 }
 
+# EKS API endpoint access.
+# `endpoint_public_access = false` is the most secure posture, but Terraform's
+# kubernetes/helm providers run from outside the VPC and cannot reach a
+# private-only endpoint during bootstrap. Production options:
+#   1. Run Terraform from a bastion / self-hosted runner inside the VPC, set false here.
+#   2. Keep public_access enabled but restrict via public_access_cidrs to admin IPs.
+#   3. Bootstrap with public access enabled, then flip to false post-install.
+variable "eks_endpoint_public_access" {
+  type    = bool
+  default = true
+}
+
+variable "eks_public_access_cidrs" {
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+  description = "CIDRs allowed to reach the EKS public endpoint. Restrict to admin IPs in production."
+}
+
 variable "vpc_cidr" {
   type    = string
   default = "10.0.0.0/16"

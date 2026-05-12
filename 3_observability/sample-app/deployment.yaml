@@ -24,7 +24,9 @@ spec:
         fsGroup: 1000
       containers:
         - name: app
-          image: <ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/hrs-platform/team-01/app:latest
+          # ECR_REGISTRY/AWS_ACCOUNT_ID are substituted by ArgoCD Image Updater at deploy time.
+          # For initial bootstrap, run: envsubst < deployment.yaml | kubectl apply -f -
+          image: ${AWS_ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/hrs-platform/team-01/app:latest
           ports:
             - containerPort: 8000
           env:
@@ -90,13 +92,14 @@ metadata:
   name: sample-app
   namespace: team-01
   annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # AWS Load Balancer Controller — provisions an ALB and points it at this Service.
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}  # From terraform output acm_certificate_arn
 spec:
-  tls:
-    - hosts:
-        - team-01.platform.hrstravel.com
-      secretName: platform-hrstravel-com-tls
   rules:
     - host: team-01.platform.hrstravel.com
       http:

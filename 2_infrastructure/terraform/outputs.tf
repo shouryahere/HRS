@@ -93,3 +93,28 @@ output "aws_region" {
   value       = var.aws_region
   description = "AWS region"
 }
+
+output "acm_certificate_arn" {
+  value       = aws_acm_certificate.platform.arn
+  description = "ACM certificate ARN for the wildcard *.platform.hrstravel.com — annotate on tenant Ingress objects"
+}
+
+output "aws_lb_controller_role_arn" {
+  value       = aws_iam_role.aws_lb_controller.arn
+  description = "AWS Load Balancer Controller IRSA role ARN"
+}
+
+output "fluent_bit_role_arn" {
+  value       = aws_iam_role.fluent_bit.arn
+  description = "Fluent Bit IRSA role ARN — annotate on the fluent-bit ServiceAccount in the monitoring namespace"
+}
+
+output "argocd_image_updater_role_arn" {
+  value       = aws_iam_role.argocd_image_updater.arn
+  description = "ArgoCD Image Updater IRSA role ARN — annotate on its ServiceAccount in the argocd namespace"
+}
+
+output "rds_master_secret_arn" {
+  value       = aws_secretsmanager_secret.rds_master.arn
+  description = "Secrets Manager ARN of the RDS master credentials secret"
+}

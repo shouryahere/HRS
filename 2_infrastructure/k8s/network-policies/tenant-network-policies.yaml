@@ -6,7 +6,8 @@
 #   2. Allow intra-namespace pod-to-pod (team services talk to each other).
 #   3. Allow egress to kube-dns (UDP/TCP 53) — required for service discovery.
 #   4. Allow egress to the RDS Proxy port (5432) in the VPC.
-#   5. Allow ingress from the ingress-nginx / ALB controller namespace.
+#   5. Allow ingress from the VPC CIDR (ALB → pod, target-type: ip).
+#      Excludes private subnets to block direct pod-to-pod across namespaces.
 #   6. Block cross-namespace pod-to-pod (enforced by Cilium eBPF).
 ---
 # Default deny-all for team-01
@@ -64,15 +65,20 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-ingress-controller
+  name: allow-alb-ingress
   namespace: team-01
 spec:
   podSelector: {}
   ingress:
+    # AWS Load Balancer Controller uses target-type: ip — traffic arrives from
+    # ALB ENIs in public subnets (10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24).
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: 10.0.0.0/16
+            except:
+              - 10.0.11.0/24
+              - 10.0.12.0/24
+              - 10.0.13.0/24
 ---
 # Default deny-all for team-02
 apiVersion: networking.k8s.io/v1
@@ -129,15 +135,18 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-ingress-controller
+  name: allow-alb-ingress
   namespace: team-02
 spec:
   podSelector: {}
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: 10.0.0.0/16
+            except:
+              - 10.0.11.0/24
+              - 10.0.12.0/24
+              - 10.0.13.0/24
 ---
 # Default deny-all for team-03
 apiVersion: networking.k8s.io/v1
@@ -194,12 +203,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-ingress-controller
+  name: allow-alb-ingress
   namespace: team-03
 spec:
   podSelector: {}
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: 10.0.0.0/16
+            except:
+              - 10.0.11.0/24
+              - 10.0.12.0/24
+              - 10.0.13.0/24
