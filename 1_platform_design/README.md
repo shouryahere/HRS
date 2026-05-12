@@ -1,75 +1,67 @@
-# HRS Multi-Tenant Platform - Architecture Design
+# HRS Multi-Tenant Platform — Architecture Design
 
 ## Overview
 
-This directory contains the complete architecture design for the **HRS Multi-Tenant Application Platform** designed to support **20+ engineering teams (250+ engineers)** with scalability to **50+ teams**.
+Architecture for the HRS Multi-Tenant Application Platform supporting **20+ engineering teams (250+ engineers)**, scaling to **50+ teams** on AWS EKS.
 
-**Key Metrics:**
-- **Target Teams:** 20 → 50+
-- **Engineering Population:** 250+ engineers
-- **Region:** AWS eu-central-1
-- **Monthly Cost:** ~$911 (infrastructure) = $18.22/team at 50-team scale
-- **Isolation Level:** 95% (namespace + network policies + IAM roles + KMS encryption)
-
-## Contents
-
-### 1. [ARCHITECTURE.md](./ARCHITECTURE.md)
-**Comprehensive design document covering:**
-- Executive summary & architecture overview
-- Multi-tenancy isolation strategy (4-layer defense in depth)
-- Storage isolation (RDS schema-based + S3 prefix-based)
-- Scalability approach (20 → 50+ teams with Karpenter, RDS Proxy, multi-prefix S3)
-- Security model (network policies, RBAC, IAM roles, Pod Security Standards, KMS encryption)
-- **AWS Cost Estimation for eu-central-1**
-  - Infrastructure: ~$911/month (mostly fixed costs)
-  - Per team (50 teams): ~$18.22/month
-  - Optimized (RIs + Spot + VPC endpoint): ~$591/month (~$12/team)
-- Design trade-offs with rationale (shared cluster vs. dedicated, shared RDS vs. per-tenant)
-- Identified bottlenecks & mitigations
-- Deployment strategy & rollback procedures
-- Production considerations & known limitations
-
-### 2. [architecture/ARCHITECTURE_DIAGRAM.svg](./architecture/ARCHITECTURE_DIAGRAM.svg)
-**Detailed Mermaid diagram showing:**
-- AWS VPC with multi-AZ setup
-- EKS cluster with namespaces per tenant
-- Network policies and RBAC isolation
-- Data layer (RDS, S3, ECR)
-- CI/CD pipeline (GitHub Actions → CodeBuild → CodePipeline)
-- Observability stack (OpenTelemetry → CloudWatch → New Relic)
-- Security groups and IAM roles
-
-## Key Design Decisions
-
-### Multi-Tenancy: Namespace-Based
-✅ **Why**: Cost-efficient, strong isolation via network policies + RBAC, scales to 50+ teams  
-⚠️ **Trade-off**: Shared control plane (mitigated by cluster autoscaler + monitoring)
-
-### Container Orchestration: EKS
-✅ **Why**: Native Kubernetes support for multi-tenancy, industry standard, SRE best practices  
-⚠️ **Trade-off**: Higher cost than ECS (~$73/month for control plane)
-
-### Database: Shared RDS with Schema Isolation
-✅ **Why**: Cost-efficient, simpler scaling  
-⚠️ **Trade-off**: Row-level security (RLS) needed for data isolation
-
-### Multi-AZ for RDS, Single-AZ for EKS (acceptable)
-✅ **Why**: RDS Multi-AZ only costs +50%, EKS cluster autoscaler handles node failures  
-✅ **Result**: High availability at reasonable cost
-
-## AWS Region: eu-central-1
-
-All cost estimates and configurations target **AWS eu-central-1** (Frankfurt, Germany) as specified in the assessment.
-
-## Next Steps
-
-1. ✅ **Architecture & Design** (Complete)
-2. → **Infrastructure as Code** (Terraform in `2_infrastructure/`)
-3. → **Observability** (OpenTelemetry + New Relic in `3_observability/`)
-4. → **Deployment Instructions & Runbooks**
+| | |
+|---|---|
+| **Version** | 2.1 |
+| **Region** | AWS eu-central-1 |
+| **Monthly Cost (50 teams)** | ~$966/month (~$19/team; ~$12/team optimised) |
+| **Isolation** | 5-layer defense in depth |
+| **CD Pattern** | GitOps (ArgoCD + ApplicationSets) |
+| **CNI** | Cilium (managed EKS add-on, eBPF) |
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: May 2026  
-**Status**: Ready for Infrastructure Implementation
+## Contents
+
+### [ARCHITECTURE.md](./ARCHITECTURE.md)
+The complete architecture specification:
+- 5-layer defense in depth (Namespace → Cilium NetPol → RBAC → IRSA → Kyverno)
+- Storage isolation (RDS schema + RLS, S3 multi-prefix, Secrets Manager ESO)
+- GitOps CI/CD flow (GitHub Actions OIDC → ECR → ArgoCD Image Updater → GitOps repo → ArgoCD)
+- Security model (Cilium, Kyverno, ESO, cert-manager, KMS, PSS restricted, EKS private endpoint, VPC Flow Logs)
+- Cost breakdown (~$966/month at 50-team scale)
+- Design trade-offs with rationale (10 decisions)
+- Full validation checklist
+
+### [architecture/ARCHITECTURE_DIAGRAM.md](./architecture/ARCHITECTURE_DIAGRAM.md)
+Mermaid flowchart showing all components and data flows:
+- Traffic: Users → ALB → Tenant Pods
+- CI/CD: GitHub Actions (OIDC) → ECR → GitOps Repo → ArgoCD → Namespaces
+- Secrets: ESO → Secrets Manager → Pods
+- Observability: OTel → New Relic (metrics + traces); Fluent Bit → CloudWatch (logs)
+
+### [architecture/ARCHITECTURE_DIAGRAM.svg](./architecture/ARCHITECTURE_DIAGRAM.svg)
+Visual SVG showing the full platform layout with all v2.1 components.
+
+---
+
+## Key Decisions
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| CNI | Cilium (managed add-on) | Calico breaks EKS ENI networking; Cilium is AWS-supported with eBPF + L7 policies |
+| CD | ArgoCD + ApplicationSets | GitOps drift detection; per-tenant AppProject isolation; scales to 50+ from one template |
+| Secrets | ESO + Secrets Manager | Secrets never in etcd; IRSA-scoped; auto-rotation |
+| Admission | Kyverno | K8s-native YAML policies; no Rego; enforces resource limits, ECR-only, no NodePort |
+| TLS | cert-manager | Auto-renew at scale; no manual certificate management |
+| CI auth | OIDC (not stored creds) | `AssumeRoleWithWebIdentity` — zero long-lived credentials in GitHub |
+| PSS level | Restricted | Baseline allows hostNetwork/hostPID escalation paths; restricted closes them |
+| DB | Shared RDS + Schema + RLS | $100/month vs $25K for per-tenant instances; RLS is DB-engine enforced |
+
+---
+
+## Next Steps
+
+1. ✅ Phase 1: Architecture Design (this directory — complete)
+2. → Phase 2: Infrastructure as Code ([2_infrastructure/](../2_infrastructure/))
+3. → Phase 3: Observability ([3_observability/](../3_observability/))
+4. → Phase 4: Documentation + Runbooks
+
+---
+
+**Version:** 2.1  
+**Status:** Ready for Phase 2 implementation

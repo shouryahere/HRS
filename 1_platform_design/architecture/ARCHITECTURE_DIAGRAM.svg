@@ -1,193 +1,378 @@
-<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 1500 1060" xmlns="http://www.w3.org/2000/svg" font-family="Inter,Segoe UI,Arial,sans-serif">
   <defs>
-    <style>
-      .title { font-size: 24px; font-weight: bold; fill: #222; }
-      .section-title { font-size: 14px; font-weight: bold; fill: #fff; }
-      .label { font-size: 12px; fill: #333; }
-      .component-label { font-size: 11px; fill: #333; font-weight: 500; }
-      .box { stroke: #333; stroke-width: 2; }
-      .section-box { stroke: #1f77b4; stroke-width: 2; fill: #e7f0f7; }
-      .tenant-box { stroke: #2ca02c; stroke-width: 2; fill: #e7f5e7; }
-      .critical-box { stroke: #d62728; stroke-width: 2; fill: #ffe7e7; }
-      .aws-box { stroke: #ff7f0e; stroke-width: 2; fill: #ffe7cc; }
-      .arrow { stroke: #666; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
-      .dashed-arrow { stroke: #999; stroke-width: 1; stroke-dasharray: 5,5; fill: none; marker-end: url(#arrowhead-dashed); }
-    </style>
-    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-      <polygon points="0 0, 10 5, 0 10" fill="#666" />
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
     </marker>
-    <marker id="arrowhead-dashed" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-      <polygon points="0 0, 10 5, 0 10" fill="#999" />
+    <marker id="arr-dashed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#999"/>
     </marker>
   </defs>
 
-  <!-- Title -->
-  <text x="700" y="30" class="title" text-anchor="middle">HRS Multi-Tenant Platform Architecture</text>
-  <text x="700" y="50" class="label" text-anchor="middle" font-size="11">AWS eu-central-1 | 20+ Teams → 50+ Teams | EKS-based Multi-Tenancy</text>
+  <!-- ── Background ─────────────────────────────────────────────── -->
+  <rect width="1500" height="1060" fill="#F8F9FA"/>
 
-  <!-- Top Section: ALB -->
-  <rect x="300" y="70" width="800" height="50" class="section-box" rx="5"/>
-  <text x="700" y="95" class="section-title" text-anchor="middle">Internet-Facing ALB (SSL/TLS Termination + Tenant Routing)</text>
+  <!-- ── Title ──────────────────────────────────────────────────── -->
+  <text x="750" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A1A2E">HRS Multi-Tenant Platform Architecture  —  v2.1</text>
+  <text x="750" y="52" text-anchor="middle" font-size="12" fill="#555">AWS eu-central-1  |  EKS + Cilium CNI  |  GitOps (ArgoCD)  |  5-Layer Isolation  |  20 → 50+ Teams</text>
 
-  <!-- Arrow to VPC -->
-  <line x1="700" y1="120" x2="700" y2="140" class="arrow"/>
+  <!-- ══════════════════════════════════════════════════════════════
+       COLUMN 1 — CI/CD + GitOps (left)
+  ══════════════════════════════════════════════════════════════ -->
+  <rect x="20" y="70" width="200" height="460" rx="8" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1.5"/>
+  <text x="120" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="#283593">CI / CD  &amp;  GitOps</text>
 
-  <!-- VPC Section -->
-  <rect x="100" y="140" width="1200" height="650" class="section-box" rx="5" stroke-width="3"/>
-  <text x="110" y="160" class="section-title">AWS VPC (10.0.0.0/16)</text>
+  <!-- GitHub Actions -->
+  <rect x="35" y="100" width="170" height="80" rx="5" fill="#24292E" stroke="#586069" stroke-width="1"/>
+  <text x="120" y="117" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">GitHub Actions</text>
+  <text x="120" y="131" text-anchor="middle" font-size="9" fill="#ccc">Build → Trivy scan</text>
+  <text x="120" y="143" text-anchor="middle" font-size="9" fill="#ccc">OIDC → AWS STS</text>
+  <text x="120" y="155" text-anchor="middle" font-size="9" fill="#ccc">push image to ECR</text>
+  <text x="120" y="168" text-anchor="middle" font-size="9" fill="#8BC34A">No stored credentials</text>
 
-  <!-- EKS Cluster Header -->
-  <rect x="120" y="175" width="1160" height="380" class="section-box" rx="5"/>
-  <text x="130" y="195" class="section-title">EKS Cluster (eu-central-1a/b/c)</text>
+  <!-- AWS STS -->
+  <rect x="35" y="195" width="170" height="50" rx="5" fill="#FF9900" stroke="#E65100" stroke-width="1"/>
+  <text x="120" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#000">AWS STS</text>
+  <text x="120" y="228" text-anchor="middle" font-size="9" fill="#333">OIDC AssumeRoleWithWebIdentity</text>
+  <text x="120" y="240" text-anchor="middle" font-size="9" fill="#333">short-lived tokens only</text>
 
-  <!-- Tenant Namespaces -->
-  <!-- Tenant A -->
-  <rect x="140" y="210" width="200" height="140" class="tenant-box" rx="3"/>
-  <text x="240" y="228" class="component-label" text-anchor="middle">Tenant-A NS</text>
-  <circle cx="160" cy="250" r="8" fill="#2ca02c"/>
-  <text x="175" y="255" class="label">Workloads</text>
-  <circle cx="160" cy="280" r="8" fill="#2ca02c"/>
-  <text x="175" y="285" class="label">Services</text>
-  <circle cx="160" cy="310" r="8" fill="#2ca02c"/>
-  <text x="175" y="315" class="label">PVCs</text>
+  <!-- GitOps Repo -->
+  <rect x="35" y="260" width="170" height="60" rx="5" fill="#2D3748" stroke="#4A5568" stroke-width="1"/>
+  <text x="120" y="278" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">GitOps Repo</text>
+  <text x="120" y="292" text-anchor="middle" font-size="9" fill="#ccc">platform-gitops</text>
+  <text x="120" y="305" text-anchor="middle" font-size="9" fill="#ccc">tenants/team-XX/ manifests</text>
 
-  <!-- Tenant B -->
-  <rect x="370" y="210" width="200" height="140" class="tenant-box" rx="3"/>
-  <text x="470" y="228" class="component-label" text-anchor="middle">Tenant-B NS</text>
-  <circle cx="390" cy="250" r="8" fill="#2ca02c"/>
-  <text x="405" y="255" class="label">Workloads</text>
-  <circle cx="390" cy="280" r="8" fill="#2ca02c"/>
-  <text x="405" y="285" class="label">Services</text>
-  <circle cx="390" cy="310" r="8" fill="#2ca02c"/>
-  <text x="405" y="315" class="label">PVCs</text>
+  <!-- ArgoCD Image Updater -->
+  <rect x="35" y="335" width="170" height="55" rx="5" fill="#E8EAF6" stroke="#3F51B5" stroke-width="1.5"/>
+  <text x="120" y="353" text-anchor="middle" font-size="11" font-weight="700" fill="#1A237E">ArgoCD Image Updater</text>
+  <text x="120" y="367" text-anchor="middle" font-size="9" fill="#333">polls ECR for new tags</text>
+  <text x="120" y="381" text-anchor="middle" font-size="9" fill="#333">commits tag → GitOps repo</text>
 
-  <!-- Tenant N (ellipsis) -->
-  <text x="620" y="280" class="component-label" text-anchor="middle" font-size="16">...</text>
+  <!-- Terraform State -->
+  <rect x="35" y="405" width="170" height="55" rx="5" fill="#FFF3E0" stroke="#FF9800" stroke-width="1"/>
+  <text x="120" y="423" text-anchor="middle" font-size="11" font-weight="700" fill="#E65100">Terraform State</text>
+  <text x="120" y="437" text-anchor="middle" font-size="9" fill="#555">S3 backend</text>
+  <text x="120" y="451" text-anchor="middle" font-size="9" fill="#555">DynamoDB lock (team-safe)</text>
 
-  <!-- Tenant C (last visible) -->
-  <rect x="700" y="210" width="200" height="140" class="tenant-box" rx="3"/>
-  <text x="800" y="228" class="component-label" text-anchor="middle">Tenant-N NS</text>
-  <circle cx="720" cy="250" r="8" fill="#2ca02c"/>
-  <text x="735" y="255" class="label">Workloads</text>
-  <circle cx="720" cy="280" r="8" fill="#2ca02c"/>
-  <text x="735" y="285" class="label">Services</text>
-  <circle cx="720" cy="310" r="8" fill="#2ca02c"/>
-  <text x="735" y="315" class="label">PVCs</text>
+  <!-- ══════════════════════════════════════════════════════════════
+       AWS VPC — main container
+  ══════════════════════════════════════════════════════════════ -->
+  <rect x="235" y="70" width="970" height="730" rx="10" fill="#FFF8E1" stroke="#FF9900" stroke-width="2.5"/>
+  <text x="245" y="91" font-size="13" font-weight="700" fill="#E65100">AWS VPC  10.0.0.0/16  |  VPC Flow Logs enabled  |  eu-central-1</text>
 
-  <!-- Isolation Layers (Right side) -->
-  <rect x="940" y="210" width="320" height="140" class="critical-box" rx="3"/>
-  <text x="1100" y="228" class="component-label" text-anchor="middle">Isolation Layers</text>
-  <text x="950" y="250" class="label" font-size="10">🔒 Layer 1: Namespace</text>
-  <text x="950" y="265" class="label" font-size="10">🔒 Layer 2: Network Policy</text>
-  <text x="950" y="280" class="label" font-size="10">🔒 Layer 3: RBAC</text>
-  <text x="950" y="295" class="label" font-size="10">🔒 Layer 4: IAM Roles</text>
-  <text x="950" y="315" class="label" font-size="10">CNI: Calico (eBPF)</text>
-  <text x="950" y="330" class="label" font-size="10">PSS: baseline enforced</text>
-  <text x="950" y="345" class="label" font-size="10">KMS: secrets encrypted</text>
+  <!-- Public Subnets strip -->
+  <rect x="250" y="98" width="940" height="60" rx="5" fill="#FFE0B2" stroke="#FF9800" stroke-width="1"/>
+  <text x="720" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#BF360C">Public Subnets — 3 AZs</text>
 
-  <!-- Node Group -->
-  <rect x="140" y="365" width="1120" height="170" class="section-box" rx="3"/>
-  <text x="150" y="382" class="component-label">Node Group: t3.medium (Auto-scaling: 2-10 nodes)</text>
+  <!-- ALB -->
+  <rect x="400" y="118" width="180" height="32" rx="4" fill="#FF9900" stroke="#E65100" stroke-width="1"/>
+  <text x="490" y="130" text-anchor="middle" font-size="10" font-weight="700" fill="#000">ALB — HTTPS 443</text>
+  <text x="490" y="143" text-anchor="middle" font-size="9" fill="#333">cert-manager TLS  |  tenant routing</text>
 
-  <!-- Nodes (simplified) -->
-  <rect x="160" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
-  <text x="210" y="415" class="label" text-anchor="middle" font-size="10">Node 1</text>
-  <text x="210" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
-  <text x="210" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+  <!-- NAT Gateways -->
+  <rect x="620" y="118" width="80" height="32" rx="4" fill="#FFCC80" stroke="#FF9800" stroke-width="1"/>
+  <text x="660" y="129" text-anchor="middle" font-size="9" font-weight="700" fill="#333">NAT GW</text>
+  <text x="660" y="142" text-anchor="middle" font-size="8" fill="#555">AZ-1</text>
 
-  <rect x="290" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
-  <text x="340" y="415" class="label" text-anchor="middle" font-size="10">Node 2</text>
-  <text x="340" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
-  <text x="340" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+  <rect x="710" y="118" width="80" height="32" rx="4" fill="#FFCC80" stroke="#FF9800" stroke-width="1"/>
+  <text x="750" y="129" text-anchor="middle" font-size="9" font-weight="700" fill="#333">NAT GW</text>
+  <text x="750" y="142" text-anchor="middle" font-size="8" fill="#555">AZ-2</text>
 
-  <text x="420" y="420" class="label" font-size="12">...</text>
+  <rect x="800" y="118" width="80" height="32" rx="4" fill="#FFCC80" stroke="#FF9800" stroke-width="1"/>
+  <text x="840" y="129" text-anchor="middle" font-size="9" font-weight="700" fill="#333">NAT GW</text>
+  <text x="840" y="142" text-anchor="middle" font-size="8" fill="#555">AZ-3</text>
 
-  <rect x="480" y="395" width="100" height="60" class="box" fill="#f0f0f0" rx="3"/>
-  <text x="530" y="415" class="label" text-anchor="middle" font-size="10">Node N</text>
-  <text x="530" y="432" class="label" text-anchor="middle" font-size="9">IRSA: Enabled</text>
-  <text x="530" y="445" class="label" text-anchor="middle" font-size="9">PSS: baseline</text>
+  <!-- ── EKS Cluster ────────────────────────────────────────────── -->
+  <rect x="250" y="170" width="940" height="510" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="2"/>
+  <text x="260" y="189" font-size="12" font-weight="700" fill="#0D47A1">EKS Cluster  |  Kubernetes 1.32  |  Private API Endpoint  |  Cilium CNI (eBPF)  |  Karpenter node autoscaling</text>
 
-  <!-- Karpenter & ResourceQuota -->
-  <rect x="620" y="395" width="150" height="60" class="section-box" rx="3"/>
-  <text x="695" y="415" class="component-label" text-anchor="middle" font-size="11">Karpenter</text>
-  <text x="695" y="430" class="label" text-anchor="middle" font-size="9">Auto-scaling</text>
-  <text x="695" y="443" class="label" text-anchor="middle" font-size="9">Bin-packing</text>
+  <!-- ── Platform Namespace ─────────────────────────────────────── -->
+  <rect x="265" y="196" width="910" height="135" rx="6" fill="#EDE7F6" stroke="#7B3F9E" stroke-width="1.5"/>
+  <text x="275" y="212" font-size="11" font-weight="700" fill="#4A148C">Platform Namespace  —  default-deny network policy  (ArgoCD / Kyverno / cert-manager / ESO / OTel / Fluent Bit)</text>
 
-  <rect x="810" y="395" width="150" height="60" class="section-box" rx="3"/>
-  <text x="885" y="415" class="component-label" text-anchor="middle" font-size="11">ResourceQuota</text>
-  <text x="885" y="430" class="label" text-anchor="middle" font-size="9">CPU: 10 cores/tenant</text>
-  <text x="885" y="443" class="label" text-anchor="middle" font-size="9">Memory: 20Gi/tenant</text>
+  <!-- ArgoCD -->
+  <rect x="278" y="218" width="125" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="340" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">ArgoCD</text>
+  <text x="340" y="247" text-anchor="middle" font-size="8" fill="#555">ApplicationSets</text>
+  <text x="340" y="260" text-anchor="middle" font-size="8" fill="#555">AppProject per tenant</text>
+  <text x="340" y="273" text-anchor="middle" font-size="8" fill="#555">self-heal + prune</text>
+  <text x="340" y="286" text-anchor="middle" font-size="8" fill="#555">drift detection</text>
+  <text x="340" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">GitOps CD</text>
 
-  <rect x="1000" y="395" width="240" height="60" class="critical-box" rx="3"/>
-  <text x="1120" y="415" class="component-label" text-anchor="middle" font-size="11">Security Controls</text>
-  <text x="1010" y="430" class="label" font-size="9">• KMS Encryption</text>
-  <text x="1010" y="443" class="label" font-size="9">• Pod Security Standards</text>
-  <text x="1010" y="456" class="label" font-size="9">• Audit Logging</text>
+  <!-- Kyverno -->
+  <rect x="415" y="218" width="120" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="475" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">Kyverno</text>
+  <text x="475" y="247" text-anchor="middle" font-size="8" fill="#555">ClusterPolicies</text>
+  <text x="475" y="260" text-anchor="middle" font-size="8" fill="#555">resource limits required</text>
+  <text x="475" y="273" text-anchor="middle" font-size="8" fill="#555">ECR-only images</text>
+  <text x="475" y="286" text-anchor="middle" font-size="8" fill="#555">no NodePort/LB svc</text>
+  <text x="475" y="299" text-anchor="middle" font-size="8" fill="#555">team + env labels</text>
+  <text x="475" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">Admission control</text>
 
-  <!-- External Infrastructure Section -->
-  <rect x="120" y="570" width="1160" height="200" class="aws-box" rx="5"/>
-  <text x="130" y="590" class="section-title">Shared Infrastructure (Outside Cluster)</text>
+  <!-- cert-manager -->
+  <rect x="547" y="218" width="115" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="604" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">cert-manager</text>
+  <text x="604" y="247" text-anchor="middle" font-size="8" fill="#555">ClusterIssuer</text>
+  <text x="604" y="260" text-anchor="middle" font-size="8" fill="#555">*.platform.hrstravel.com</text>
+  <text x="604" y="273" text-anchor="middle" font-size="8" fill="#555">Let's Encrypt DNS-01</text>
+  <text x="604" y="286" text-anchor="middle" font-size="8" fill="#555">via Route53 (IRSA)</text>
+  <text x="604" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">TLS lifecycle</text>
+
+  <!-- ESO -->
+  <rect x="674" y="218" width="115" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="731" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">ESO</text>
+  <text x="731" y="247" text-anchor="middle" font-size="8" fill="#555">ExternalSecret CRDs</text>
+  <text x="731" y="260" text-anchor="middle" font-size="8" fill="#555">ClusterSecretStore</text>
+  <text x="731" y="273" text-anchor="middle" font-size="8" fill="#555">IRSA-scoped fetch</text>
+  <text x="731" y="286" text-anchor="middle" font-size="8" fill="#555">secrets never in etcd</text>
+  <text x="731" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">Secrets delivery</text>
+
+  <!-- OTel -->
+  <rect x="801" y="218" width="115" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="858" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">OTel Collector</text>
+  <text x="858" y="247" text-anchor="middle" font-size="8" fill="#555">DaemonSet</text>
+  <text x="858" y="260" text-anchor="middle" font-size="8" fill="#555">metrics + traces pipelines</text>
+  <text x="858" y="273" text-anchor="middle" font-size="8" fill="#555">namespace → tenant_id</text>
+  <text x="858" y="286" text-anchor="middle" font-size="8" fill="#555">filter: ^team-.* only</text>
+  <text x="858" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">Observability</text>
+
+  <!-- Fluent Bit -->
+  <rect x="928" y="218" width="115" height="100" rx="4" fill="#D1C4E9" stroke="#7B1FA2" stroke-width="1"/>
+  <text x="985" y="233" text-anchor="middle" font-size="10" font-weight="700" fill="#4A148C">Fluent Bit</text>
+  <text x="985" y="247" text-anchor="middle" font-size="8" fill="#555">DaemonSet</text>
+  <text x="985" y="260" text-anchor="middle" font-size="8" fill="#555">pod stdout/stderr</text>
+  <text x="985" y="273" text-anchor="middle" font-size="8" fill="#555">tenant_id field injected</text>
+  <text x="985" y="286" text-anchor="middle" font-size="8" fill="#555">→ CloudWatch Logs</text>
+  <text x="985" y="309" text-anchor="middle" font-size="8" fill="#7B1FA2">Log aggregation</text>
+
+  <!-- ── Tenant Namespaces ───────────────────────────────────────── -->
+  <rect x="265" y="342" width="910" height="190" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="275" y="358" font-size="11" font-weight="700" fill="#1B5E20">Tenant Namespaces  team-01 … team-N  |  PSS restricted  |  Cilium default-deny  |  RBAC  |  Kyverno enforced  |  IRSA</text>
+
+  <!-- team-01 -->
+  <rect x="278" y="364" width="180" height="155" rx="4" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+  <text x="368" y="379" text-anchor="middle" font-size="10" font-weight="700" fill="#1B5E20">team-01</text>
+  <text x="283" y="394" font-size="8" fill="#333">• Pods (HPA: 2–10 replicas)</text>
+  <text x="283" y="407" font-size="8" fill="#333">• PSS restricted (non-root)</text>
+  <text x="283" y="420" font-size="8" fill="#333">• Cilium NetPol (default-deny)</text>
+  <text x="283" y="433" font-size="8" fill="#333">• RBAC Role + RoleBinding</text>
+  <text x="283" y="446" font-size="8" fill="#333">• IRSA (S3/RDS/SM access)</text>
+  <text x="283" y="459" font-size="8" fill="#333">• ResourceQuota 10CPU/20Gi</text>
+  <text x="283" y="472" font-size="8" fill="#333">• ExternalSecret (ESO)</text>
+  <text x="283" y="485" font-size="8" fill="#333">• ArgoCD AppProject scoped</text>
+  <text x="283" y="505" font-size="8" fill="#2E7D32">Isolated at 5 layers</text>
+
+  <!-- team-02 -->
+  <rect x="470" y="364" width="180" height="155" rx="4" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+  <text x="560" y="379" text-anchor="middle" font-size="10" font-weight="700" fill="#1B5E20">team-02</text>
+  <text x="475" y="394" font-size="8" fill="#333">• Pods (HPA: 2–10 replicas)</text>
+  <text x="475" y="407" font-size="8" fill="#333">• PSS restricted (non-root)</text>
+  <text x="475" y="420" font-size="8" fill="#333">• Cilium NetPol (default-deny)</text>
+  <text x="475" y="433" font-size="8" fill="#333">• RBAC Role + RoleBinding</text>
+  <text x="475" y="446" font-size="8" fill="#333">• IRSA (S3/RDS/SM access)</text>
+  <text x="475" y="459" font-size="8" fill="#333">• ResourceQuota 10CPU/20Gi</text>
+  <text x="475" y="472" font-size="8" fill="#333">• ExternalSecret (ESO)</text>
+  <text x="475" y="485" font-size="8" fill="#333">• ArgoCD AppProject scoped</text>
+  <text x="475" y="505" font-size="8" fill="#2E7D32">Cannot reach team-01 pods</text>
+
+  <!-- ellipsis -->
+  <text x="675" y="445" text-anchor="middle" font-size="28" fill="#888">···</text>
+  <text x="675" y="465" text-anchor="middle" font-size="9" fill="#666">Terraform for_each</text>
+  <text x="675" y="478" text-anchor="middle" font-size="9" fill="#666">scales to 50+ teams</text>
+
+  <!-- team-N -->
+  <rect x="760" y="364" width="180" height="155" rx="4" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+  <text x="850" y="379" text-anchor="middle" font-size="10" font-weight="700" fill="#1B5E20">team-N</text>
+  <text x="765" y="394" font-size="8" fill="#333">• Pods (HPA: 2–10 replicas)</text>
+  <text x="765" y="407" font-size="8" fill="#333">• PSS restricted (non-root)</text>
+  <text x="765" y="420" font-size="8" fill="#333">• Cilium NetPol (default-deny)</text>
+  <text x="765" y="433" font-size="8" fill="#333">• RBAC Role + RoleBinding</text>
+  <text x="765" y="446" font-size="8" fill="#333">• IRSA (S3/RDS/SM access)</text>
+  <text x="765" y="459" font-size="8" fill="#333">• ResourceQuota 10CPU/20Gi</text>
+  <text x="765" y="472" font-size="8" fill="#333">• ExternalSecret (ESO)</text>
+  <text x="765" y="485" font-size="8" fill="#333">• ArgoCD AppProject scoped</text>
+  <text x="765" y="505" font-size="8" fill="#2E7D32">Full 5-layer isolation</text>
+
+  <!-- 5-layer isolation summary box -->
+  <rect x="955" y="364" width="192" height="155" rx="4" fill="#FFEBEE" stroke="#B71C1C" stroke-width="1.5"/>
+  <text x="1051" y="379" text-anchor="middle" font-size="10" font-weight="700" fill="#B71C1C">5-Layer Defense</text>
+  <text x="960" y="395" font-size="9" fill="#333">① Namespace  (logical)</text>
+  <text x="960" y="410" font-size="9" fill="#333">② Cilium NetPol  (L3/4/7)</text>
+  <text x="960" y="425" font-size="9" fill="#333">③ RBAC  (API server)</text>
+  <text x="960" y="440" font-size="9" fill="#333">④ IRSA  (AWS IAM)</text>
+  <text x="960" y="455" font-size="9" fill="#333">⑤ Kyverno  (admission)</text>
+  <line x1="960" y1="462" x2="1140" y2="462" stroke="#B71C1C" stroke-width="0.5"/>
+  <text x="960" y="476" font-size="8" fill="#555">+ PSS restricted</text>
+  <text x="960" y="489" font-size="8" fill="#555">+ ESO secrets delivery</text>
+  <text x="960" y="502" font-size="8" fill="#555">+ KMS etcd encryption</text>
+  <text x="960" y="515" font-size="8" fill="#555">+ Audit logging</text>
+
+  <!-- ── Node Group / Karpenter ──────────────────────────────────── -->
+  <rect x="265" y="544" width="910" height="125" rx="5" fill="#E3F2FD" stroke="#42A5F5" stroke-width="1"/>
+  <text x="275" y="560" font-size="10" font-weight="700" fill="#0D47A1">Node Group  t3.medium  |  Karpenter (on-demand + spot)  |  IRSA enabled  |  PSS restricted enforced  |  Cilium eBPF</text>
+
+  <rect x="280" y="568" width="90" height="55" rx="3" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
+  <text x="325" y="583" text-anchor="middle" font-size="9" font-weight="600" fill="#333">Node 1</text>
+  <text x="325" y="596" text-anchor="middle" font-size="8" fill="#555">AZ-1</text>
+  <text x="325" y="608" text-anchor="middle" font-size="8" fill="#555">t3.medium</text>
+
+  <rect x="380" y="568" width="90" height="55" rx="3" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
+  <text x="425" y="583" text-anchor="middle" font-size="9" font-weight="600" fill="#333">Node 2</text>
+  <text x="425" y="596" text-anchor="middle" font-size="8" fill="#555">AZ-2</text>
+  <text x="425" y="608" text-anchor="middle" font-size="8" fill="#555">t3.medium</text>
+
+  <rect x="480" y="568" width="90" height="55" rx="3" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
+  <text x="525" y="583" text-anchor="middle" font-size="9" font-weight="600" fill="#333">Node N</text>
+  <text x="525" y="596" text-anchor="middle" font-size="8" fill="#555">AZ-3</text>
+  <text x="525" y="608" text-anchor="middle" font-size="8" fill="#555">Karpenter spot</text>
+
+  <text x="600" y="600" text-anchor="middle" font-size="16" fill="#888">···</text>
+  <text x="600" y="615" text-anchor="middle" font-size="8" fill="#888">2–10 nodes auto-scaled</text>
+
+  <rect x="640" y="568" width="145" height="55" rx="3" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="712" y="583" text-anchor="middle" font-size="9" font-weight="700" fill="#0D47A1">Karpenter</text>
+  <text x="712" y="596" text-anchor="middle" font-size="8" fill="#555">bin-packing</text>
+  <text x="712" y="608" text-anchor="middle" font-size="8" fill="#555">spot interruption handling</text>
+
+  <rect x="800" y="568" width="145" height="55" rx="3" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="872" y="583" text-anchor="middle" font-size="9" font-weight="700" fill="#0D47A1">ResourceQuota</text>
+  <text x="872" y="596" text-anchor="middle" font-size="8" fill="#555">10 CPU / 20Gi per tenant</text>
+  <text x="872" y="608" text-anchor="middle" font-size="8" fill="#555">LimitRange min/max</text>
+
+  <rect x="960" y="568" width="190" height="55" rx="3" fill="#FFEBEE" stroke="#B71C1C" stroke-width="1"/>
+  <text x="1055" y="583" text-anchor="middle" font-size="9" font-weight="700" fill="#B71C1C">Security Controls</text>
+  <text x="965" y="596" font-size="8" fill="#555">KMS etcd encryption  •  Audit logs</text>
+  <text x="965" y="608" font-size="8" fill="#555">EKS private endpoint  •  VPC Flow Logs</text>
+
+  <!-- ── Shared Infrastructure ──────────────────────────────────── -->
+  <rect x="250" y="690" width="940" height="100" rx="6" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+  <text x="260" y="707" font-size="11" font-weight="700" fill="#E65100">Shared Infrastructure  (VPC endpoints for S3 + ECR — no internet egress for artifact traffic)</text>
 
   <!-- RDS -->
-  <rect x="140" y="605" width="180" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
-  <text x="230" y="625" class="component-label" text-anchor="middle">RDS PostgreSQL</text>
-  <text x="150" y="645" class="label" font-size="10">• Multi-AZ</text>
-  <text x="150" y="660" class="label" font-size="10">• Schema isolation</text>
-  <text x="150" y="675" class="label" font-size="10">  (schema_a, b, c)</text>
-  <text x="150" y="690" class="label" font-size="10">• RDS Proxy</text>
-  <text x="150" y="705" class="label" font-size="10">  (conn pooling)</text>
-  <text x="150" y="720" class="label" font-size="10">• IAM Auth</text>
-  <text x="150" y="735" class="label" font-size="10">• Encrypted at rest</text>
-
-  <!-- ECR -->
-  <rect x="350" y="605" width="150" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
-  <text x="425" y="625" class="component-label" text-anchor="middle">ECR</text>
-  <text x="360" y="645" class="label" font-size="10">• Docker Images</text>
-  <text x="360" y="660" class="label" font-size="10">• Artifact storage</text>
-  <text x="360" y="675" class="label" font-size="10">• Tenant isolation</text>
-  <text x="360" y="690" class="label" font-size="10">  (IAM-based)</text>
-  <text x="360" y="705" class="label" font-size="10">• Image scan</text>
-  <text x="360" y="720" class="label" font-size="10">• Lifecycle policy</text>
-  <text x="360" y="735" class="label" font-size="10"></text>
+  <rect x="265" y="714" width="155" height="65" rx="4" fill="#FFE0B2" stroke="#F57C00" stroke-width="1"/>
+  <text x="342" y="729" text-anchor="middle" font-size="10" font-weight="700" fill="#BF360C">RDS PostgreSQL</text>
+  <text x="270" y="743" font-size="8" fill="#555">Multi-AZ  •  Schema isolation</text>
+  <text x="270" y="756" font-size="8" fill="#555">Row-Level Security (RLS)</text>
+  <text x="270" y="769" font-size="8" fill="#555">RDS Proxy (1000 pooled conns)</text>
 
   <!-- S3 -->
-  <rect x="540" y="605" width="150" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
-  <text x="615" y="625" class="component-label" text-anchor="middle">S3</text>
-  <text x="550" y="645" class="label" font-size="10">• Artifact storage</text>
-  <text x="550" y="660" class="label" font-size="10">• Prefix isolation</text>
-  <text x="550" y="675" class="label" font-size="10">  (tenant-a/b/c)</text>
-  <text x="550" y="690" class="label" font-size="10">• IAM Bucket policy</text>
-  <text x="550" y="705" class="label" font-size="10">• VPC endpoint</text>
-  <text x="550" y="720" class="label" font-size="10">• Multi-prefix</text>
-  <text x="550" y="735" class="label" font-size="10">  sharding (50K r/s)</text>
+  <rect x="435" y="714" width="145" height="65" rx="4" fill="#FFE0B2" stroke="#F57C00" stroke-width="1"/>
+  <text x="507" y="729" text-anchor="middle" font-size="10" font-weight="700" fill="#BF360C">S3</text>
+  <text x="440" y="743" font-size="8" fill="#555">Multi-prefix sharding</text>
+  <text x="440" y="756" font-size="8" fill="#555">50K req/s (no throttling)</text>
+  <text x="440" y="769" font-size="8" fill="#555">VPC endpoint  •  IRSA IAM</text>
 
-  <!-- CodePipeline/CodeBuild -->
-  <rect x="730" y="605" width="180" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
-  <text x="820" y="625" class="component-label" text-anchor="middle">CI/CD Pipeline</text>
-  <text x="740" y="645" class="label" font-size="10">• GitHub → CodeBuild</text>
-  <text x="740" y="660" class="label" font-size="10">• CodePipeline</text>
-  <text x="740" y="675" class="label" font-size="10">• Build → ECR push</text>
-  <text x="740" y="690" class="label" font-size="10">• CodeDeploy</text>
-  <text x="740" y="705" class="label" font-size="10">• Deploy to namespace</text>
-  <text x="740" y="720" class="label" font-size="10">• RBAC-enforced</text>
-  <text x="740" y="735" class="label" font-size="10">• Tenant isolation</text>
+  <!-- ECR -->
+  <rect x="595" y="714" width="160" height="65" rx="4" fill="#FFE0B2" stroke="#F57C00" stroke-width="1"/>
+  <text x="675" y="729" text-anchor="middle" font-size="10" font-weight="700" fill="#BF360C">ECR</text>
+  <text x="600" y="743" font-size="8" fill="#555">Per-tenant repos  •  VPC endpoint</text>
+  <text x="600" y="756" font-size="8" fill="#555">Enhanced Scanning  •  Trivy gate</text>
+  <text x="600" y="769" font-size="8" fill="#555">Kyverno ECR-only policy</text>
 
-  <!-- Observability -->
-  <rect x="950" y="605" width="310" height="150" class="aws-box" rx="3" stroke="#ff7f0e" stroke-width="2"/>
-  <text x="1105" y="625" class="component-label" text-anchor="middle">Observability Stack</text>
-  <text x="960" y="645" class="label" font-size="10">• OpenTelemetry Collector (DaemonSet)</text>
-  <text x="960" y="660" class="label" font-size="10">• New Relic (OTLP exporter)</text>
-  <text x="960" y="675" class="label" font-size="10">• Prometheus (metrics, tenant-labeled)</text>
-  <text x="960" y="690" class="label" font-size="10">• CloudWatch Logs (audit, tenant-namespaced)</text>
-  <text x="960" y="705" class="label" font-size="10">• SLIs/SLOs: latency (p99), error rate</text>
-  <text x="960" y="720" class="label" font-size="10">• Dashboards: platform + per-tenant metrics</text>
-  <text x="960" y="735" class="label" font-size="10">• Alerts: SLO violations, resource exhaustion</text>
+  <!-- Secrets Manager -->
+  <rect x="770" y="714" width="175" height="65" rx="4" fill="#FFE0B2" stroke="#F57C00" stroke-width="1"/>
+  <text x="857" y="729" text-anchor="middle" font-size="10" font-weight="700" fill="#BF360C">Secrets Manager</text>
+  <text x="775" y="743" font-size="8" fill="#555">hrs/team-XX/ path hierarchy</text>
+  <text x="775" y="756" font-size="8" fill="#555">ESO-managed  •  auto-rotation</text>
+  <text x="775" y="769" font-size="8" fill="#555">IRSA per-tenant scoping</text>
 
-  <!-- Legend -->
-  <rect x="120" y="800" width="1160" height="80" class="section-box" rx="5"/>
-  <text x="130" y="820" class="section-title">Key Features & Isolation Strategy</text>
+  <!-- KMS + CloudTrail -->
+  <rect x="960" y="714" width="205" height="65" rx="4" fill="#FFEBEE" stroke="#B71C1C" stroke-width="1"/>
+  <text x="1062" y="729" text-anchor="middle" font-size="10" font-weight="700" fill="#B71C1C">KMS  +  CloudTrail</text>
+  <text x="965" y="743" font-size="8" fill="#555">KMS: etcd + Secrets Manager</text>
+  <text x="965" y="756" font-size="8" fill="#555">CloudTrail: all AWS API calls</text>
+  <text x="965" y="769" font-size="8" fill="#555">EKS audit logs → CloudWatch</text>
 
-  <text x="140" y="845" class="label" font-size="11"><tspan font-weight="bold">Multi-Tenancy (4-Layer Defense):</tspan> Namespace + NetworkPolicy (Calico CNI) + RBAC + IAM Roles | <tspan font-weight="bold">Storage:</tspan> RDS schema-based + S3 prefix-based</text>
-  <text x="140" y="862" class="label" font-size="11"><tspan font-weight="bold">Scalability:</tspan> Karpenter auto-scaling + RDS Proxy (1000 pooled conns) + S3 multi-prefix sharding | <tspan font-weight="bold">Security:</tspan> KMS encryption + Pod Security Standards + RBAC audit logging | <tspan font-weight="bold">Cost:</tspan> ~$911/mo infrastructure ($18.22/team at 50 teams)</text>
+  <!-- ══════════════════════════════════════════════════════════════
+       COLUMN 3 — Observability (right)
+  ══════════════════════════════════════════════════════════════ -->
+  <rect x="1220" y="70" width="260" height="490" rx="8" fill="#E0F2F1" stroke="#00796B" stroke-width="1.5"/>
+  <text x="1350" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="#004D40">Observability</text>
 
+  <!-- New Relic -->
+  <rect x="1235" y="100" width="230" height="115" rx="5" fill="#004D40" stroke="#00796B" stroke-width="1"/>
+  <text x="1350" y="118" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">New Relic</text>
+  <text x="1350" y="133" text-anchor="middle" font-size="9" fill="#A5D6A7">Metrics + Distributed Traces</text>
+  <text x="1350" y="148" text-anchor="middle" font-size="9" fill="#A5D6A7">tenant-isolated dashboards</text>
+  <text x="1350" y="163" text-anchor="middle" font-size="9" fill="#80CBC4">SLO: 99.9% avail · p99 &lt; 500ms</text>
+  <text x="1350" y="176" text-anchor="middle" font-size="9" fill="#80CBC4">Error rate &lt; 0.1%</text>
+  <text x="1350" y="191" text-anchor="middle" font-size="9" fill="#FFF176">DORA metrics dashboard</text>
+  <text x="1350" y="204" text-anchor="middle" font-size="8" fill="#ccc">deploy freq · lead time · CFR · MTTR</text>
+
+  <!-- CloudWatch -->
+  <rect x="1235" y="228" width="230" height="95" rx="5" fill="#1B5E20" stroke="#2E7D32" stroke-width="1"/>
+  <text x="1350" y="247" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">CloudWatch Logs</text>
+  <text x="1350" y="262" text-anchor="middle" font-size="9" fill="#A5D6A7">Fluent Bit pod logs</text>
+  <text x="1350" y="277" text-anchor="middle" font-size="9" fill="#A5D6A7">tenant_id field — filterable</text>
+  <text x="1350" y="292" text-anchor="middle" font-size="9" fill="#A5D6A7">EKS audit logs</text>
+  <text x="1350" y="307" text-anchor="middle" font-size="9" fill="#FFF176">VPC Flow Logs</text>
+  <text x="1350" y="316" text-anchor="middle" font-size="8" fill="#ccc">network forensics</text>
+
+  <!-- SLI/SLO boxes -->
+  <rect x="1235" y="336" width="230" height="100" rx="5" fill="#E0F2F1" stroke="#00897B" stroke-width="1"/>
+  <text x="1350" y="352" text-anchor="middle" font-size="11" font-weight="700" fill="#004D40">SLIs / SLOs</text>
+  <text x="1240" y="368" font-size="9" fill="#333">Availability: 99.9% uptime</text>
+  <text x="1240" y="382" font-size="9" fill="#333">Latency: p99 &lt; 500ms</text>
+  <text x="1240" y="396" font-size="9" fill="#333">Error rate: &lt; 0.1%</text>
+  <text x="1240" y="410" font-size="9" fill="#333">ArgoCD sync: &lt; 3 min</text>
+  <text x="1240" y="424" font-size="9" fill="#333">Tenant add: &lt; 5 min</text>
+
+  <!-- Alert rules -->
+  <rect x="1235" y="448" width="230" height="100" rx="5" fill="#E0F2F1" stroke="#00897B" stroke-width="1"/>
+  <text x="1350" y="464" text-anchor="middle" font-size="11" font-weight="700" fill="#004D40">Alerting Rules</text>
+  <text x="1240" y="480" font-size="9" fill="#333">SLO violation → PagerDuty</text>
+  <text x="1240" y="494" font-size="9" fill="#333">ArgoCD sync failure alert</text>
+  <text x="1240" y="508" font-size="9" fill="#333">Kyverno block rate spike</text>
+  <text x="1240" y="522" font-size="9" fill="#333">ESO sync error alert</text>
+  <text x="1240" y="536" font-size="9" fill="#333">ResourceQuota &gt; 80% warn</text>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       COST SUMMARY strip
+  ══════════════════════════════════════════════════════════════ -->
+  <rect x="20" y="820" width="1460" height="70" rx="6" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1.5"/>
+  <text x="740" y="839" text-anchor="middle" font-size="12" font-weight="700" fill="#283593">Cost Estimation  —  AWS eu-central-1  (50-team scale)</text>
+  <text x="40" y="858" font-size="10" fill="#333">EKS: $73  |  EKS 1.32 Extended Support: $438 (drops after upgrade to 1.33)  |  EC2 nodes (avg 6×t3.med): $180  |  RDS Multi-AZ: $100  |  RDS Proxy: $11  |  ALB: $50  |  NAT ×3: $70</text>
+  <text x="40" y="874" font-size="10" fill="#333">S3+ECR VPC endpoints: $14  |  Storage: $13  |  Data transfer: $75  |  Secrets Manager (500 secrets): $200  |  CW Logs: $50  |  VPC Flow Logs: $25  |  KMS: $15  |  CloudTrail: $10  |  New Relic: $50  |  Misc: $30</text>
+  <text x="40" y="889" font-size="10" font-weight="700" fill="#283593">NOW (EKS 1.32): ~$1,379/month (~$28/team)  |  POST-UPGRADE to 1.33: ~$941/month (~$19/team)  |  Optimised: ~$12/team</text>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       ARROWS — key flows
+  ══════════════════════════════════════════════════════════════ -->
+
+  <!-- Users → ALB -->
+  <line x1="490" y1="80" x2="490" y2="118" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ALB → EKS (tenant pods) -->
+  <line x1="490" y1="158" x2="490" y2="170" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- GitOps Repo → ArgoCD (from left column through VPC border) -->
+  <line x1="220" y1="284" x2="278" y2="265" stroke="#3F51B5" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+
+  <!-- GitHub Actions → ECR (CI push) -->
+  <line x1="205" y1="138" x2="595" y2="738" stroke="#388E3C" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- ArgoCD → Tenant Namespaces -->
+  <line x1="340" y1="318" x2="340" y2="342" stroke="#7B1FA2" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ESO → Secrets Manager -->
+  <line x1="731" y1="318" x2="857" y2="714" stroke="#F57C00" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- OTel → New Relic -->
+  <line x1="1060" y1="265" x2="1220" y2="155" stroke="#00897B" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Fluent Bit → CloudWatch -->
+  <line x1="1060" y1="295" x2="1220" y2="275" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Pods → RDS Proxy -->
+  <line x1="360" y1="535" x2="342" y2="714" stroke="#F57C00" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Pods → S3 -->
+  <line x1="500" y1="535" x2="507" y2="714" stroke="#F57C00" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Image Updater → GitOps Repo -->
+  <line x1="120" y1="335" x2="120" y2="320" stroke="#3F51B5" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       VERSION TAG
+  ══════════════════════════════════════════════════════════════ -->
+  <text x="1480" y="1055" text-anchor="end" font-size="9" fill="#999">v2.1 — May 2026</text>
 </svg>

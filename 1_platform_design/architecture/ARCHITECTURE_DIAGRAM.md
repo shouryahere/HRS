@@ -1,167 +1,115 @@
-graph TB
-    subgraph Internet["Internet/External"]
-        DNS["Route 53<br/>DNS"]
-        Users["Corporate Users<br/>250+ Engineers"]
+```mermaid
+flowchart TB
+
+    subgraph EXT["External"]
+        Users["👥 250+ Engineers\nCorporate Users"]
+        GHA["GitHub Actions\nCI: Build → Trivy → ECR push\nOIDC auth → AWS STS"]
+        GitOpsRepo["GitOps Repo\nplatform-gitops\nargocd watches this"]
     end
 
-    subgraph AWS["AWS eu-central-1 Region"]
-        subgraph VPC["VPC: 10.0.0.0/16"]
-            subgraph PublicSubnets["Public Subnets (2 AZs)"]
-                NAT1["NAT Gateway<br/>AZ 1"]
-                NAT2["NAT Gateway<br/>AZ 2"]
-                ALB["Application Load Balancer<br/>Port 443 HTTPS"]
+    subgraph AWS["AWS eu-central-1"]
+        STS["AWS STS\nOIDC Endpoint\nAssumeRoleWithWebIdentity"]
+        KMS["KMS\nEtcd encryption\n+ Secrets Manager values"]
+        CT["CloudTrail\n+ EKS Audit Logs"]
+
+        subgraph VPC["VPC  10.0.0.0/16   VPC Flow Logs enabled"]
+
+            subgraph PUB["Public Subnets — AZ-1 / AZ-2 / AZ-3"]
+                ALB["ALB\nHTTPS 443\ncert-manager TLS"]
+                NAT1["NAT GW\nAZ-1"]
+                NAT2["NAT GW\nAZ-2"]
+                NAT3["NAT GW\nAZ-3"]
             end
 
-            subgraph PrivateSubnets["Private Subnets (2 AZs)"]
-                subgraph EKSCluster["EKS Cluster: Kubernetes 1.27+"]
-                    CPM["Control Plane<br/>AWS Managed"]
-                    
-                    subgraph NodeGroup1["Node Group 1 - AZ 1<br/>t3.medium/large"]
-                        Node1["Node 1"]
-                        Node2["Node 2"]
+            subgraph PRIV["Private Subnets — AZ-1 / AZ-2 / AZ-3"]
+
+                subgraph EKS["EKS Cluster   Private API Endpoint   Cilium CNI eBPF"]
+
+                    subgraph PLATFORM["Platform Namespace   default-deny network policy"]
+                        ArgoCD["ArgoCD\nApplicationSets\nAppProjects per tenant"]
+                        ImgUpd["ArgoCD\nImage Updater\npoll ECR → commit tag"]
+                        Kyverno["Kyverno\nClusterPolicies\nresource limits · ECR-only · no NodePort"]
+                        CertMgr["cert-manager\n*.platform.hrstravel.com\nLet's Encrypt DNS-01 via Route53\nIRSA for Route53 access"]
+                        ESO["External Secrets\nOperator\nfetch from Secrets Manager"]
+                        OTel["OTel Collector\nDaemonSet\nmetrics + traces\nnamespace → tenant_id"]
+                        FB["Fluent Bit\nDaemonSet\npod logs → CloudWatch\ntenant_id tagged"]
                     end
 
-                    subgraph NodeGroup2["Node Group 2 - AZ 2<br/>t3.medium/large"]
-                        Node3["Node 3"]
-                        Node4["Node 4"]
+                    subgraph TENANTS["Tenant Namespaces   team-01 … team-N   PSS restricted"]
+                        PODS["Application Pods\nHPA: 2–10 replicas\nread-only root fs\nnon-root user"]
+                        SEC["Cilium NetworkPolicy\nRBAC Role + RoleBinding\nKyverno enforcement\nIRSA ServiceAccount\nResourceQuota + LimitRange"]
                     end
 
-                    subgraph KubeSystem["kube-system Namespace"]
-                        Ingress["NGINX Ingress<br/>Controller"]
-                        CertMgr["Cert Manager<br/>SSL/TLS"]
-                        OTelCollector["OpenTelemetry<br/>Collector"]
-                        Monitoring["Prometheus/CloudWatch<br/>Agent"]
-                    end
-
-                    subgraph TenantAlpha["Namespace: tenant-alpha"]
-                        AlphaPods["Pods<br/>2-10 replicas"]
-                        AlphaSvc["Service<br/>ClusterIP"]
-                        AlphaNP["Network Policy<br/>Deny-All Ingress"]
-                        AlphaRBAC["RBAC<br/>Role/RoleBinding"]
-                        AlphaIRSA["IRSA<br/>IAM Role"]
-                    end
-
-                    subgraph TenantBeta["Namespace: tenant-beta"]
-                        BetaPods["Pods<br/>2-10 replicas"]
-                        BetaSvc["Service<br/>ClusterIP"]
-                        BetaNP["Network Policy<br/>Deny-All Ingress"]
-                        BetaRBAC["RBAC<br/>Role/RoleBinding"]
-                        BetaIRSA["IRSA<br/>IAM Role"]
-                    end
-
-                    subgraph TenantN["Namespace: tenant-N"]
-                        NPods["Pods<br/>2-10 replicas"]
-                        NSvc["Service<br/>ClusterIP"]
-                        NNP["Network Policy<br/>Deny-All Ingress"]
-                        NRBAC["RBAC<br/>Role/RoleBinding"]
-                        NIRSA["IRSA<br/>IAM Role"]
-                    end
+                    KARP["Karpenter\nNodePool\non-demand + spot\nbin-packing"]
                 end
 
-                subgraph DataLayer["Data & Storage Layer"]
-                    RDS["RDS PostgreSQL<br/>Multi-AZ<br/>db.t3.large<br/>500 GB Storage"]
-                    S3["S3 Bucket<br/>Artifact Storage<br/>1 TB"]
-                    ECR["ECR<br/>Container Registry"]
-                    Cache["ElastiCache<br/>Optional"]
+                subgraph DATA["Data Layer"]
+                    RDSP["RDS Proxy\n1000 pooled connections"]
+                    RDS["RDS PostgreSQL\nMulti-AZ\nSchema isolation\n+ Row-Level Security\nIAM auth"]
+                    S3["S3\nmulti-prefix sharding\n50K req/s\nVPC endpoint"]
+                    SM["Secrets Manager\nhrs/team-XX/ paths\nESO-managed\nauto-rotation"]
                 end
 
-                subgraph CI_CD["CI/CD Infrastructure"]
-                    CodeBuild["AWS CodeBuild<br/>Docker Build"]
-                    CodePipeline["AWS CodePipeline<br/>Orchestration"]
-                    GH_Actions["GitHub Actions<br/>Trigger/Notify"]
-                end
-            end
-
-            subgraph SecurityLayer["Security & IAM"]
-                SG["Security Groups<br/>Ingress: 443 only"]
-                NACL["NACLs<br/>Optional"]
-                IAM["IAM Roles & Policies<br/>Least Privilege"]
-                Secrets["AWS Secrets Manager<br/>DB Credentials"]
+                ECR["ECR\nper-tenant repositories\nVPC endpoint\nEnhanced Scanning\nTrivy pre-push gate"]
             end
         end
 
-        subgraph Monitoring["Observability Stack"]
-            CW_Logs["CloudWatch Logs<br/>Application Logs"]
-            CW_Metrics["CloudWatch Metrics<br/>Infrastructure"]
-            NewRelic["New Relic<br/>APM & Analytics"]
-            OTLP["OTLP Exporter<br/>OpenTelemetry Protocol"]
-        end
+        CWL["CloudWatch Logs\n+ VPC Flow Logs\nstructured pod logs"]
+        NR["New Relic\nmetrics · traces\nSLO · DORA dashboards\ntenant-isolated views"]
     end
 
-    %% Connections - External
-    DNS -->|DNS Resolution| ALB
-    Users -->|HTTPS Requests| DNS
+    %% ── Traffic ──────────────────────────────────────────────
+    Users -->|HTTPS| ALB
+    ALB -->|"route by hostname\ncert-manager TLS"| PODS
 
-    %% Connections - ALB to Ingress
-    ALB -->|Routes Traffic| Ingress
+    %% ── CI/CD flow ───────────────────────────────────────────
+    GHA -->|"OIDC\nAssumeRoleWithWebIdentity"| STS
+    GHA -->|"docker push\n(Trivy passed)"| ECR
+    GHA -->|"commit image tag\nto GitOps repo"| GitOpsRepo
+    ImgUpd -->|"poll ECR\ncommit new tag"| GitOpsRepo
+    ArgoCD -->|"watch HEAD"| GitOpsRepo
+    ArgoCD -->|"reconcile\nper-tenant AppProject"| TENANTS
 
-    %% Connections - Ingress to Services
-    Ingress -->|Route to Services| AlphaSvc
-    Ingress -->|Route to Services| BetaSvc
-    Ingress -->|Route to Services| NSvc
+    %% ── Secrets ──────────────────────────────────────────────
+    ESO -->|"IRSA-scoped\nfetch"| SM
+    SM -.->|"inject as K8s Secret\nin tenant namespace"| PODS
 
-    %% Connections - Services to Pods
-    AlphaSvc -->|Load Balance| AlphaPods
-    BetaSvc -->|Load Balance| BetaPods
-    NSvc -->|Load Balance| NPods
+    %% ── Data access ──────────────────────────────────────────
+    PODS -->|"IAM auth\nschema + RLS"| RDSP
+    RDSP --> RDS
+    PODS -->|"prefix-scoped\nIRSA policy"| S3
+    PODS -->|"pull images\nKyverno ECR-only"| ECR
 
-    %% Connections - Isolation & Security per Tenant
-    AlphaPods -->|Protected by| AlphaNP
-    AlphaPods -->|Controlled by| AlphaRBAC
-    AlphaPods -->|Assumed Role| AlphaIRSA
-    
-    BetaPods -->|Protected by| BetaNP
-    BetaPods -->|Controlled by| BetaRBAC
-    BetaPods -->|Assumed Role| BetaIRSA
-    
-    NPods -->|Protected by| NNP
-    NPods -->|Controlled by| NRBAC
-    NPods -->|Assumed Role| NIRSA
+    %% ── Observability ────────────────────────────────────────
+    OTel -->|"OTLP\ntenant_id label"| NR
+    FB -->|"structured logs\ntenant_id field"| CWL
 
-    %% Connections - Data Access
-    AlphaPods -->|Query via<br/>Tenant Schema| RDS
-    BetaPods -->|Query via<br/>Tenant Schema| RDS
-    NPods -->|Query via<br/>Tenant Schema| RDS
+    %% ── Encryption ───────────────────────────────────────────
+    KMS -.->|"etcd at-rest\nencryption"| EKS
+    KMS -.->|"secret value\nencryption"| SM
+    CT -.->|"API audit trail"| AWS
 
-    AlphaPods -->|S3 API<br/>Tenant Prefix| S3
-    BetaPods -->|S3 API<br/>Tenant Prefix| S3
-    NPods -->|S3 API<br/>Tenant Prefix| S3
+    %% ── Egress ───────────────────────────────────────────────
+    EKS -->|"AZ-1 egress"| NAT1
+    EKS -->|"AZ-2 egress"| NAT2
+    EKS -->|"AZ-3 egress"| NAT3
 
-    %% Connections - CI/CD
-    GH_Actions -->|Trigger Build| CodeBuild
-    CodeBuild -->|Push Image| ECR
-    GH_Actions -->|Deploy| CodePipeline
-    CodePipeline -->|Deploy Manifests| EKSCluster
+    %% ── Styling ──────────────────────────────────────────────
+    classDef aws      fill:#FF9900,stroke:#232F3E,color:#000
+    classDef eks      fill:#326CE5,stroke:#1a3fa8,color:#fff
+    classDef platform fill:#7B3F9E,stroke:#4a1070,color:#fff
+    classDef tenant   fill:#2E7D32,stroke:#1b5e20,color:#fff
+    classDef data     fill:#E65100,stroke:#bf360c,color:#fff
+    classDef obs      fill:#00695C,stroke:#004d40,color:#fff
+    classDef security fill:#B71C1C,stroke:#7f0000,color:#fff
+    classDef external fill:#455A64,stroke:#263238,color:#fff
 
-    %% Connections - Monitoring
-    OTelCollector -->|Collect Metrics| Monitoring
-    Monitoring -->|Ingest Logs| CW_Logs
-    Monitoring -->|Ingest Metrics| CW_Metrics
-    OTLP -->|Export OTLP| NewRelic
-    OTelCollector -->|Export to| OTLP
-
-    %% Connections - Security
-    AlphaIRSA -->|Assume| IAM
-    BetaIRSA -->|Assume| IAM
-    NIRSA -->|Assume| IAM
-    IAM -->|Retrieve| Secrets
-    SG -->|Isolate| VPC
-
-    %% Connections - Egress
-    Node1 -->|NAT Egress| NAT1
-    Node2 -->|NAT Egress| NAT1
-    Node3 -->|NAT Egress| NAT2
-    Node4 -->|NAT Egress| NAT2
-
-    %% Styling
-    classDef aws fill:#FF9900,stroke:#232F3E,color:#000,stroke-width:2px
-    classDef k8s fill:#326CE5,stroke:#000,color:#fff,stroke-width:2px
-    classDef tenant fill:#7B68EE,stroke:#000,color:#fff,stroke-width:2px
-    classDef security fill:#DC143C,stroke:#000,color:#fff,stroke-width:2px
-    classDef monitoring fill:#FF6B6B,stroke:#000,color:#fff,stroke-width:2px
-
-    class AWS,VPC,PublicSubnets,PrivateSubnets,DataLayer,NAT1,NAT2,RDS,S3,ECR,Cache,CodeBuild,CodePipeline,CW_Logs,CW_Metrics,IAM,Secrets aws
-    class EKSCluster,KubeSystem,CPM,NodeGroup1,NodeGroup2,Ingress,CertMgr,OTelCollector,Monitoring k8s
-    class TenantAlpha,TenantBeta,TenantN,AlphaPods,BetaPods,NPods,AlphaSvc,BetaSvc,NSvc,AlphaNP,BetaNP,NNP,AlphaRBAC,BetaRBAC,NRBAC,AlphaIRSA,BetaIRSA,NIRSA tenant
-    class SecurityLayer,SG,NACL,Secrets security
-    class Monitoring,NewRelic,OTLP monitoring
+    class AWS,VPC,PUB,PRIV,ECR,STS aws
+    class EKS,KARP eks
+    class PLATFORM,ArgoCD,ImgUpd,Kyverno,CertMgr,ESO,OTel,FB platform
+    class TENANTS,PODS,SEC tenant
+    class DATA,RDSP,RDS,S3,SM data
+    class NR,CWL obs
+    class KMS,CT security
+    class EXT,Users,GHA,GitOpsRepo external
+```
